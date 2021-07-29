@@ -1,7 +1,9 @@
-# talk-loco-commands
-Official client/server compatible Loco commands implementation. Check doc for additional description.
+# talk-loco-client
+Official client/server compatible Loco client implementation. Check Doc for additional description.
 
 ## Contributing
+
+### Command
 See `src/request`, `src/response` directory for already implemented command datas.
 For data structs used in many places see `src/structs`.
 
