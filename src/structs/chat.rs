@@ -34,7 +34,8 @@ pub struct Chatlog {
     /// Message content
     ///
     /// Usually String, but can be json String according to chat type.
-    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 
     /// Send time
     ///

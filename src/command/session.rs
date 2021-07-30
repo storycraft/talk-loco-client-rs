@@ -4,9 +4,17 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use std::{io::{self, Read, Write}, time::Duration, vec::Drain};
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    future::Future,
+    io::{self, Read, Write},
+    pin::Pin,
+    sync::{Arc, Mutex, Weak},
+    task::{Context, Poll},
+};
 
 use bson::Document;
+use futures::Stream;
 use loco_protocol::command::codec::StreamError;
 use serde::Serialize;
 
@@ -36,109 +44,189 @@ impl From<ReadError> for RequestError {
 /// Command session with command cache.
 /// Provide methods for requesting command response and broadcast command handling.
 /// Useful when creating client.
-/// Using non blocking mode highly recommended to prevent blocking.
+/// Using non blocking mode highly recommended.
 #[derive(Debug)]
 pub struct BsonCommandSession<S> {
-    store: Vec<BsonCommand<Document>>,
-    manager: BsonCommandManager<S>,
+    inner: Arc<Mutex<BsonCommandSessionInner<S>>>,
 }
 
 impl<S> BsonCommandSession<S> {
     /// Create new [BsonCommandSession]
-    pub fn new(stream: S) -> Self {
+    pub fn new(manager: BsonCommandManager<S>) -> Self {
         Self {
-            store: Vec::new(),
-            manager: BsonCommandManager::new(stream),
+            inner: Arc::new(Mutex::new(BsonCommandSessionInner {
+                request_set: BTreeSet::new(),
+                response_map: BTreeMap::new(),
+                broadcasts: VecDeque::new(),
+                manager,
+            })),
         }
     }
 
-    /// Create new [BsonCommandSession] with specific max write chunk size.
-    pub fn with_capacity(stream: S, max_write_chunk_size: usize) -> Self {
-        Self {
-            store: Vec::new(),
-            manager: BsonCommandManager::with_capacity(stream, max_write_chunk_size),
+    /// Try unwrapping [BsonCommandManager].
+    /// If any request not finished exist this method will fail return Err.
+    pub fn try_unwrap(self) -> Result<BsonCommandManager<S>, ()> {
+        match Arc::try_unwrap(self.inner) {
+            Ok(inner) => Ok(inner.into_inner().unwrap().manager),
+            Err(_) => Err(()),
         }
-    }
-
-    pub fn manager(&self) -> &BsonCommandManager<S> {
-        &self.manager
-    }
-
-    pub fn stream(&self) -> &S {
-        self.manager.stream()
-    }
-
-    pub fn stream_mut(&mut self) -> &mut S {
-        self.manager.stream_mut()
-    }
-
-    pub fn unwrap(self) -> S {
-        self.manager.unwrap()
     }
 }
 
 impl<S: Read + Write> BsonCommandSession<S> {
     /// Request response for given command.
-    /// This method blocks socket.
-    /// The response is guaranteed to have same id and method of request command.
+    /// The response is guaranteed to have same id of request command.
     pub fn request<T: Serialize>(
-        &mut self,
+        &self,
         command: &BsonCommand<T>,
-    ) -> Result<Document, RequestError> {
+    ) -> Result<ResponseFuture<S>, RequestError> {
+        let request_id = self.inner.lock().unwrap().request(command)?;
+
+        Ok(ResponseFuture {
+            request_id,
+            inner: self.inner.clone(),
+        })
+    }
+}
+
+impl<S: Read> BsonCommandSession<S> {
+    /// Read incoming broadcast commands
+    pub fn broadcasts(&self) -> BroadcastStream<S> {
+        BroadcastStream {
+            inner: Arc::downgrade(&self.inner),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct BsonCommandSessionInner<S> {
+    request_set: BTreeSet<i32>,
+    response_map: BTreeMap<i32, BsonCommand<Document>>,
+
+    broadcasts: VecDeque<(i32, BsonCommand<Document>)>,
+
+    manager: BsonCommandManager<S>,
+}
+
+impl<S: Read + Write> BsonCommandSessionInner<S> {
+    pub fn request<T: Serialize>(&mut self, command: &BsonCommand<T>) -> Result<i32, RequestError> {
         let request_id = self.manager.write(command)?;
+        Ok(request_id)
+    }
+}
 
-        loop {
-            match self.manager.read() {
-                Ok((id, read)) => {
-                    if id == request_id && read.method == command.method {
-                        return Ok(read.data);
-                    } else {
-                        self.store.push(read);
+impl<S: Read> BsonCommandSessionInner<S> {
+    /// Poll first [BsonCommand] incoming.
+    pub fn poll(&mut self) -> Poll<Result<(), ReadError>> {
+        match self.manager.read() {
+            Ok((id, read)) => {
+                if self.request_set.remove(&id) {
+                    self.response_map.insert(id, read);
+                } else {
+                    self.broadcasts.push_back((id, read));
+                }
+
+                Poll::Ready(Ok(()))
+            }
+
+            Err(ReadError::Codec(StreamError::Io(err)))
+                if err.kind() == io::ErrorKind::WouldBlock =>
+            {
+                Poll::Pending
+            }
+
+            Err(err) => Poll::Ready(Err(err)),
+        }
+    }
+
+    /// Poll specific [BsonCommand]
+    pub fn poll_id(&mut self, id: i32) -> Poll<Result<BsonCommand<Document>, ReadError>> {
+        if let Some(res) = self.response_map.remove(&id) {
+            Poll::Ready(Ok(res))
+        } else {
+            self.request_set.insert(id);
+
+            match self.poll() {
+                Poll::Ready(result) => match result {
+                    Ok(_) => {
+                        if let Some(res) = self.response_map.remove(&id) {
+                            Poll::Ready(Ok(res))
+                        } else {
+                            Poll::Pending
+                        }
                     }
-                }
-
-                Err(ReadError::Codec(StreamError::Io(err)))
-                    if err.kind() == io::ErrorKind::WouldBlock =>
-                {
-                    std::thread::sleep(Duration::from_millis(1));
-                }
-
-                Err(err) => return Err(RequestError::from(err)),
+                    Err(err) => Poll::Ready(Err(err)),
+                },
+                Poll::Pending => Poll::Pending,
             }
         }
     }
 }
 
-impl<S: Read> BsonCommandSession<S> {
-    /// Poll one broadcast command.
-    /// This method can block depending on stream.
-    pub fn poll(&mut self) -> Result<(), ReadError> {
-        self.poll_many(1)
-    }
+/// Future for BsonCommand response.
+/// Request response must be processed before requesting other command.
+#[must_use = "futures do nothing unless polled"]
+pub struct ResponseFuture<S> {
+    request_id: i32,
+    inner: Arc<Mutex<BsonCommandSessionInner<S>>>,
+}
 
-    /// Poll broadcast commands up to max limit
-    pub fn poll_many(&mut self, max: usize) -> Result<(), ReadError> {
-        for _ in 0..max {
-            match self.manager.read() {
-                Ok((_, read)) => {
-                    self.store.push(read)
-                },
-    
-                Err(ReadError::Codec(StreamError::Io(err)))
-                    if err.kind() == io::ErrorKind::WouldBlock =>
-                {
-                    break;
-                }
-    
-                Err(err) => return Err(ReadError::from(err)),
+impl<S> ResponseFuture<S> {
+    pub fn request_id(&self) -> i32 {
+        self.request_id
+    }
+}
+
+impl<S: Read> Future for ResponseFuture<S> {
+    type Output = Result<BsonCommand<Document>, ReadError>;
+
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut inner = self.inner.lock().unwrap();
+
+        match inner.poll_id(self.request_id) {
+            Poll::Ready(res) => Poll::Ready(res),
+
+            Poll::Pending => {
+                ctx.waker().wake_by_ref();
+                Poll::Pending
             }
         }
-
-        Ok(())
     }
+}
 
-    /// Drain every broadcast commands stored
-    pub fn broadcasts(&mut self) -> Drain<'_, BsonCommand<Document>> {
-        self.store.drain(..)
+pub struct BroadcastStream<S> {
+    inner: Weak<Mutex<BsonCommandSessionInner<S>>>,
+}
+
+impl<S: Read> Stream for BroadcastStream<S> {
+    type Item = Result<(i32, BsonCommand<Document>), ReadError>;
+
+    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.inner.upgrade() {
+            Some(inner) => {
+                let mut inner = inner.lock().unwrap();
+
+                if let Some(unread) = inner.broadcasts.pop_front() {
+                    Poll::Ready(Some(Ok(unread)))
+                } else {
+                    match inner.poll() {
+                        Poll::Ready(res) => {
+                            if let Err(err) = res {
+                                Poll::Ready(Some(Err(err)))
+                            } else {
+                                ctx.waker().wake_by_ref();
+                                Poll::Pending
+                            }
+                        }
+
+                        Poll::Pending => {
+                            ctx.waker().wake_by_ref();
+                            Poll::Pending
+                        }
+                    }
+                }
+            }
+            None => return Poll::Ready(None),
+        }
     }
 }

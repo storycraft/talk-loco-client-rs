@@ -23,8 +23,8 @@ pub struct Msg {
     pub chatlog: Option<Chatlog>,
 
     /// Sender nickname
-    #[serde(rename = "authorNickname")]
-    pub author_nick: String,
+    #[serde(rename = "authorNickname", skip_serializing_if = "Option::is_none")]
+    pub author_nick: Option<String>,
 
     /// false If sender sent message without reading.
     ///
