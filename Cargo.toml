@@ -10,11 +10,12 @@ authors = ["storycraft <storycraft@pancake.sh>"]
 edition = "2018"
 
 [features]
+client = ["futures"]
 wasm = ["loco-protocol/wasm"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-futures = "0.3"
+futures = { version = "0.3", optional = true }
 bson = "1.1.0"
 loco-protocol = "2.0.2"
 

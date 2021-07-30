@@ -5,6 +5,8 @@
  */
 
 pub mod manager;
+
+#[cfg(feature = "client")]
 pub mod session;
 
 #[derive(Debug, Clone)]
