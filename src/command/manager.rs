@@ -10,10 +10,13 @@ use std::{
 };
 
 use bson::Document;
-use loco_protocol::command::{Command, builder::CommandBuilder, codec::{CommandCodec, StreamError}};
+use futures::{AsyncRead, AsyncWrite};
+use loco_protocol::command::{
+    builder::CommandBuilder,
+    codec::{CommandCodec, StreamError},
+    Command,
+};
 use serde::Serialize;
-
-use crate::stream::ChunkedWriteStream;
 
 use super::BsonCommand;
 
@@ -37,7 +40,7 @@ impl From<bson::ser::Error> for WriteError {
 
 #[derive(Debug)]
 pub enum ReadError {
-    Codec(StreamError),
+    Stream(StreamError),
 
     /// Response command's status is not 0, means the request is corrupted
     Corrupted(Command),
@@ -48,7 +51,7 @@ pub enum ReadError {
 
 impl From<StreamError> for ReadError {
     fn from(err: StreamError) -> Self {
-        Self::Codec(err)
+        Self::Stream(err)
     }
 }
 
@@ -64,42 +67,36 @@ impl From<bson::de::Error> for ReadError {
     }
 }
 
-/// [BsonCommand] read / write manager.
-/// The default implementation will write command data with 2KB sized chunk.
+/// [BsonCommand] read / write manager
 #[derive(Debug)]
 pub struct BsonCommandManager<S> {
     current_id: i32,
-    codec: CommandCodec<ChunkedWriteStream<S>>,
+    codec: CommandCodec<S>,
 }
 
 impl<S> BsonCommandManager<S> {
     /// Create new [BsonCommandManager] from Stream
     pub fn new(stream: S) -> Self {
-        Self::with_capacity(stream, 2048)
-    }
-
-    /// Create new [BsonCommandManager] from Stream with specific max write chunk size.
-    pub fn with_capacity(stream: S, max_write_chunk_size: usize) -> Self {
         Self {
             current_id: 0,
-            codec: CommandCodec::new(ChunkedWriteStream::new(stream, max_write_chunk_size)),
+            codec: CommandCodec::new(stream),
         }
     }
 
-    pub fn codec(&self) -> &CommandCodec<ChunkedWriteStream<S>> {
+    pub fn codec(&self) -> &CommandCodec<S> {
         &self.codec
     }
 
-    pub fn codec_mut(&mut self) -> &mut CommandCodec<ChunkedWriteStream<S>> {
+    pub fn codec_mut(&mut self) -> &mut CommandCodec<S> {
         &mut self.codec
     }
 
     pub fn stream(&self) -> &S {
-        self.codec.stream().inner()
+        self.codec.stream()
     }
 
     pub fn stream_mut(&mut self) -> &mut S {
-        self.codec.stream_mut().inner_mut()
+        self.codec.stream_mut()
     }
 
     pub fn current_id(&self) -> i32 {
@@ -107,16 +104,10 @@ impl<S> BsonCommandManager<S> {
     }
 
     pub fn unwrap(self) -> S {
-        self.codec.unwrap().unwrap()
+        self.codec.unwrap()
     }
-}
 
-impl<S: Write> BsonCommandManager<S> {
-    /// Write bson command. returns request_id on success
-    pub fn write<T: Serialize>(&mut self, command: &BsonCommand<T>) -> Result<i32, WriteError> {
-        let request_id = self.current_id;
-        self.current_id += 1;
-
+    fn encode_bson_command<T: Serialize>(&self, request_id: i32, command: &BsonCommand<T>) -> Result<Command, bson::ser::Error> {
         let builder = CommandBuilder::new(request_id, &command.method);
 
         let mut raw_data = Vec::new();
@@ -124,7 +115,20 @@ impl<S: Write> BsonCommandManager<S> {
         let doc = bson::to_document(&command.data)?;
         doc.to_writer(&mut raw_data)?;
 
-        let command = builder.build(0, raw_data);
+        Ok(builder.build(0, raw_data))
+    }
+}
+
+impl<S: Write> BsonCommandManager<S> {
+    /// Write [BsonCommand]. returns request_id on success
+    pub fn write<T: Serialize>(
+        &mut self,
+        command: &BsonCommand<T>,
+    ) -> Result<i32, WriteError> {
+        let request_id = self.current_id;
+        self.current_id += 1;
+
+        let command = self.encode_bson_command(request_id, command)?;
 
         self.codec.write(&command)?;
 
@@ -133,19 +137,66 @@ impl<S: Write> BsonCommandManager<S> {
 }
 
 impl<S: Read> BsonCommandManager<S> {
-    /// Read bson command. returns (request_id, BsonCommand) tuple
+    /// Read [BsonCommand]. returns (request_id, [BsonCommand]) tuple
     pub fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
         let (_, command) = self.codec.read()?;
 
         if command.header.status == 0 {
             let id = command.header.id;
             let method = command.header.method()?;
-    
-            let document = bson::Document::from_reader(&mut Cursor::new(command.data))?;
-    
-            let data = bson::from_document::<Document>(document)?;
-    
-            Ok((id, BsonCommand { method, data_type: command.header.data_type, data }))
+
+            let data = bson::Document::from_reader(&mut Cursor::new(command.data))?;
+
+            Ok((
+                id,
+                BsonCommand {
+                    method,
+                    data_type: command.header.data_type,
+                    data,
+                },
+            ))
+        } else {
+            Err(ReadError::Corrupted(command))
+        }
+    }
+}
+
+impl<S: AsyncWrite + Unpin> BsonCommandManager<S> {
+    /// Write [BsonCommand] async. returns request_id on success
+    pub async fn write_async<T: Serialize>(
+        &mut self,
+        command: &BsonCommand<T>,
+    ) -> Result<i32, WriteError> {
+        let request_id = self.current_id;
+        self.current_id += 1;
+
+        let command = self.encode_bson_command(request_id, command)?;
+
+        self.codec.write_async(&command).await?;
+
+        Ok(request_id)
+    }
+}
+
+impl<S: AsyncRead + Unpin> BsonCommandManager<S> {
+    /// Read [BsonCommand]. returns (request_id, [BsonCommand]) tuple
+    pub async fn read_async(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
+        let (_, command) = self.codec.read_async().await?;
+
+        if command.header.status == 0 {
+            let id = command.header.id;
+            let method = command.header.method()?;
+
+            let data = bson::Document::from_reader(&mut Cursor::new(command.data))?;
+
+            Ok((
+                id,
+                BsonCommand {
+                    method,
+                    data_type: command.header.data_type,
+                    data,
+                },
+            ))
         } else {
             Err(ReadError::Corrupted(command))
         }
