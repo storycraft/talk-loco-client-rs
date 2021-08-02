@@ -68,7 +68,7 @@ impl<S> BsonCommandSession<S> {
 }
 
 impl<S: AsyncWrite + AsyncRead + Unpin> BsonCommandSession<S> {
-    /// Request response for given command.
+    /// Request given command.
     /// The response is guaranteed to have same id of request command.
     pub async fn request<T: Serialize>(
         &self,
@@ -77,6 +77,8 @@ impl<S: AsyncWrite + AsyncRead + Unpin> BsonCommandSession<S> {
         let mut inner = self.inner.lock().unwrap();
 
         let request_id = inner.manager.write_async(command).await?;
+
+        inner.request_set.insert(request_id);
 
         Ok(Request {
             request_id,
@@ -127,7 +129,7 @@ impl<S: AsyncRead + Unpin> BsonCommandSessionInner<S> {
         Ok(())
     }
 
-    /// Read specific [BsonCommand]
+    /// Read specific [BsonCommand] added in request_set
     pub async fn read_id(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
         if let Some(res) = self.response_map.remove(&id) {
             Ok(res)
@@ -163,5 +165,15 @@ impl<S: AsyncRead + Unpin> Request<S> {
         let mut inner = self.inner.lock().unwrap();
 
         inner.read_id(self.request_id).await
+    }
+}
+
+impl<S> Drop for Request<S> {
+    fn drop(&mut self) {
+        let mut inner = self.inner.lock().unwrap();
+
+        if !inner.request_set.remove(&self.request_id) {
+            inner.response_map.remove(&self.request_id);
+        }
     }
 }
