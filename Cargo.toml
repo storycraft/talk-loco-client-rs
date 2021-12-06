@@ -7,7 +7,7 @@ readme = "readme.md"
 description = "Official Loco client with command sets"
 repository = "https://github.com/storycraft/talk-loco-client-rs"
 authors = ["storycraft <storycraft@pancake.sh>"]
-edition = "2018"
+edition = "2021"
 
 [features]
 client = []
@@ -16,11 +16,11 @@ wasm = ["loco-protocol/wasm"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 futures = "0.3.16"
-bson = "1.1.0"
-loco-protocol = { version = "3.0.0", path = "../loco-protocol" }
+bson = "2.0.1"
+loco-protocol = { version = "4.0.0", path = "../loco-protocol-rs" }
 
 [dev-dependencies]
 rsa = "0.5.0"
 tokio = { version = "1.9.0", features = ["full"] }
 tokio-util = { version = "0.6.7", features = ["compat"] }
-pem = "0.8"
+pem = "1.0.1"

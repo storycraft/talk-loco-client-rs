@@ -106,17 +106,6 @@ impl<S> BsonCommandManager<S> {
     pub fn unwrap(self) -> S {
         self.codec.unwrap()
     }
-
-    fn encode_bson_command<T: Serialize>(&self, request_id: i32, command: &BsonCommand<T>) -> Result<Command, bson::ser::Error> {
-        let builder = CommandBuilder::new(request_id, &command.method);
-
-        let mut raw_data = Vec::new();
-
-        let doc = bson::to_document(&command.data)?;
-        doc.to_writer(&mut raw_data)?;
-
-        Ok(builder.build(0, raw_data))
-    }
 }
 
 impl<S: Write> BsonCommandManager<S> {
@@ -128,7 +117,7 @@ impl<S: Write> BsonCommandManager<S> {
         let request_id = self.current_id;
         self.current_id += 1;
 
-        let command = self.encode_bson_command(request_id, command)?;
+        let command = encode_bson_command(request_id, command)?;
 
         self.codec.write(&command)?;
 
@@ -170,7 +159,7 @@ impl<S: AsyncWrite + Unpin> BsonCommandManager<S> {
         let request_id = self.current_id;
         self.current_id += 1;
 
-        let command = self.encode_bson_command(request_id, command)?;
+        let command = encode_bson_command(request_id, command)?;
 
         self.codec.write_async(&command).await?;
 
@@ -201,4 +190,15 @@ impl<S: AsyncRead + Unpin> BsonCommandManager<S> {
             Err(ReadError::Corrupted(command))
         }
     }
+}
+
+fn encode_bson_command<T: Serialize>(request_id: i32, command: &BsonCommand<T>) -> Result<Command, bson::ser::Error> {
+    let builder = CommandBuilder::new(request_id, &command.method);
+
+    let mut raw_data = Vec::new();
+
+    let doc = bson::to_document(&command.data)?;
+    doc.to_writer(&mut raw_data)?;
+
+    Ok(builder.build(0, raw_data))
 }

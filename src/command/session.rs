@@ -4,10 +4,7 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
-    sync::{Arc, Mutex},
-};
+use std::collections::BTreeMap;
 
 use bson::Document;
 use futures::{AsyncRead, AsyncWrite};
@@ -39,31 +36,25 @@ impl From<ReadError> for RequestError {
 /// Async Command session with command cache.
 /// Provide methods for requesting command response and broadcast command handling.
 /// Useful when creating client.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BsonCommandSession<S> {
-    inner: Arc<Mutex<BsonCommandSessionInner<S>>>,
+    read_map: BTreeMap<i32, BsonCommand<Document>>,
+
+    manager: BsonCommandManager<S>,
 }
 
 impl<S> BsonCommandSession<S> {
     /// Create new [BsonCommandSession]
     pub fn new(manager: BsonCommandManager<S>) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(BsonCommandSessionInner {
-                request_set: BTreeSet::new(),
-                response_map: BTreeMap::new(),
-                broadcasts: VecDeque::new(),
-                manager,
-            })),
+            read_map: BTreeMap::new(),
+            manager,
         }
     }
 
-    /// Try unwrapping stream.
-    /// If any request not finished exist this method will fail return Err.
-    pub fn try_unwrap(self) -> Result<BsonCommandManager<S>, ()> {
-        match Arc::try_unwrap(self.inner) {
-            Ok(inner) => Ok(inner.into_inner().unwrap().manager),
-            Err(_) => Err(()),
-        }
+    /// Consume self and returns inner [BsonCommandManager]
+    pub fn into_inner(self) -> BsonCommandManager<S> {
+        self.manager
     }
 }
 
@@ -71,109 +62,55 @@ impl<S: AsyncWrite + AsyncRead + Unpin> BsonCommandSession<S> {
     /// Request given command.
     /// The response is guaranteed to have same id of request command.
     pub async fn request<T: Serialize>(
-        &self,
+        &mut self,
         command: &BsonCommand<T>,
-    ) -> Result<Request<S>, WriteError> {
-        let mut inner = self.inner.lock().unwrap();
+    ) -> Result<Request, WriteError> {
+        let request_id = self.manager.write_async(command).await?;
 
-        let request_id = inner.manager.write_async(command).await?;
-
-        inner.request_set.insert(request_id);
-
-        Ok(Request {
-            request_id,
-
-            inner: self.inner.clone(),
-        })
+        Ok(Request { request_id })
     }
 }
 
 impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
-    /// Read incoming broadcast commands
-    pub async fn next_broadcast(&self) -> Result<(i32, BsonCommand<Document>), ReadError> {
-        let inner = self.inner.clone();
-
-        loop {
-            let mut inner = inner.lock().unwrap();
-
-            if let Some(unread) = inner.broadcasts.pop_front() {
-                return Ok(unread);
-            }
-
-            inner.read().await?;
-        }
-    }
-}
-
-#[derive(Debug)]
-struct BsonCommandSessionInner<S> {
-    request_set: BTreeSet<i32>,
-    response_map: BTreeMap<i32, BsonCommand<Document>>,
-
-    broadcasts: VecDeque<(i32, BsonCommand<Document>)>,
-
-    manager: BsonCommandManager<S>,
-}
-
-impl<S: AsyncRead + Unpin> BsonCommandSessionInner<S> {
-    /// Read first [BsonCommand] incoming.
-    pub async fn read(&mut self) -> Result<(), ReadError> {
-        let (id, read) = self.manager.read_async().await?;
-
-        if self.request_set.remove(&id) {
-            self.response_map.insert(id, read);
+    /// Read next [BsonCommand]
+    pub async fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
+        if let Some(next_id) = self.read_map.keys().next().copied() {
+            Ok((next_id, self.read_map.remove(&next_id).unwrap()))
         } else {
-            self.broadcasts.push_back((id, read));
+            let read = self.manager.read_async().await?;
+            Ok(read)
         }
-
-        Ok(())
     }
 
-    /// Read specific [BsonCommand] added in request_set
+    /// Read [BsonCommand] with specific id
     pub async fn read_id(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
-        if let Some(res) = self.response_map.remove(&id) {
-            Ok(res)
-        } else {
-            self.request_set.insert(id);
-
-            loop {
-                self.read().await?;
-
-                if let Some(res) = self.response_map.remove(&id) {
-                    return Ok(res);
-                }
+        loop {
+            if let Some(res) = self.read_map.remove(&id) {
+                return Ok(res);
             }
+
+            let (id, read) = self.manager.read_async().await?;
+            self.read_map.insert(id, read);
         }
     }
 }
 
-/// BsonCommand request
-pub struct Request<S> {
+/// Pending [BsonCommand] request
+pub struct Request {
     request_id: i32,
-
-    inner: Arc<Mutex<BsonCommandSessionInner<S>>>,
 }
 
-impl<S> Request<S> {
+impl Request {
     pub fn request_id(&self) -> i32 {
         self.request_id
     }
 }
 
-impl<S: AsyncRead + Unpin> Request<S> {
-    pub async fn response(self) -> Result<BsonCommand<Document>, ReadError> {
-        let mut inner = self.inner.lock().unwrap();
-
-        inner.read_id(self.request_id).await
-    }
-}
-
-impl<S> Drop for Request<S> {
-    fn drop(&mut self) {
-        let mut inner = self.inner.lock().unwrap();
-
-        if !inner.request_set.remove(&self.request_id) {
-            inner.response_map.remove(&self.request_id);
-        }
+impl Request {
+    pub async fn response<S: AsyncRead + Unpin>(
+        self,
+        session: &mut BsonCommandSession<S>,
+    ) -> Result<BsonCommand<Document>, ReadError> {
+        session.read_id(self.request_id).await
     }
 }
