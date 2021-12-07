@@ -67,7 +67,7 @@ impl<S: AsyncWrite + AsyncRead + Unpin> BsonCommandSession<S> {
     ) -> Result<Request, WriteError> {
         let request_id = self.manager.write_async(command).await?;
 
-        Ok(Request { request_id })
+        Ok(Request(request_id))
     }
 }
 
@@ -96,13 +96,12 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
 }
 
 /// Pending [BsonCommand] request
-pub struct Request {
-    request_id: i32,
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Request(i32);
 
 impl Request {
     pub fn request_id(&self) -> i32 {
-        self.request_id
+        self.0
     }
 }
 
@@ -111,6 +110,6 @@ impl Request {
         self,
         session: &mut BsonCommandSession<S>,
     ) -> Result<BsonCommand<Document>, ReadError> {
-        session.read_id(self.request_id).await
+        session.read_id(self.0).await
     }
 }
