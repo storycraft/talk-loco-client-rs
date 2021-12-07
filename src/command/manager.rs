@@ -103,7 +103,7 @@ impl<S> BsonCommandManager<S> {
         self.current_id
     }
 
-    pub fn unwrap(self) -> S {
+    pub fn into_inner(self) -> S {
         self.codec.unwrap()
     }
 }

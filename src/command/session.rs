@@ -4,7 +4,10 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    io::{Read, Write},
+};
 
 use bson::Document;
 use futures::{AsyncRead, AsyncWrite};
@@ -58,10 +61,23 @@ impl<S> BsonCommandSession<S> {
     }
 }
 
-impl<S: AsyncWrite + AsyncRead + Unpin> BsonCommandSession<S> {
-    /// Request given command.
+impl<S: Write> BsonCommandSession<S> {
+    /// Send and create response ticket of this request.
     /// The response is guaranteed to have same id of request command.
-    pub async fn request<T: Serialize>(
+    pub fn request<T: Serialize>(
+        &mut self,
+        command: &BsonCommand<T>,
+    ) -> Result<Request, WriteError> {
+        let request_id = self.manager.write(command)?;
+
+        Ok(Request(request_id))
+    }
+}
+
+impl<S: AsyncWrite + Unpin> BsonCommandSession<S> {
+    /// Send and create response ticket of this request asynchronously.
+    /// The response is guaranteed to have same id of request command.
+    pub async fn request_async<T: Serialize>(
         &mut self,
         command: &BsonCommand<T>,
     ) -> Result<Request, WriteError> {
@@ -71,9 +87,38 @@ impl<S: AsyncWrite + AsyncRead + Unpin> BsonCommandSession<S> {
     }
 }
 
-impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
+impl<S: Read> BsonCommandSession<S> {
     /// Read next [BsonCommand]
-    pub async fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
+    pub fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
+        if let Some(next_id) = self.read_map.keys().next().copied() {
+            Ok((next_id, self.read_map.remove(&next_id).unwrap()))
+        } else {
+            let read = self.manager.read()?;
+            Ok(read)
+        }
+    }
+
+    /// Read [BsonCommand] with specific id
+    pub fn read_id(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
+        if let Some(read) = self.read_map.remove(&id) {
+            return Ok(read);
+        }
+
+        loop {
+            let (read_id, read) = self.manager.read()?;
+            
+            if read_id == id {
+                return Ok(read);
+            } else {
+                self.read_map.insert(id, read);
+            }
+        }
+    }
+}
+
+impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
+    /// Read next [BsonCommand] asynchronously
+    pub async fn read_async(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
             Ok((next_id, self.read_map.remove(&next_id).unwrap()))
         } else {
@@ -82,15 +127,20 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
         }
     }
 
-    /// Read [BsonCommand] with specific id
-    pub async fn read_id(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
-        loop {
-            if let Some(res) = self.read_map.remove(&id) {
-                return Ok(res);
-            }
+    /// Read [BsonCommand] with specific id asynchronously
+    pub async fn read_id_async(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
+        if let Some(read) = self.read_map.remove(&id) {
+            return Ok(read);
+        }
 
-            let (id, read) = self.manager.read_async().await?;
-            self.read_map.insert(id, read);
+        loop {
+            let (read_id, read) = self.manager.read_async().await?;
+
+            if read_id == id {
+                return Ok(read);
+            } else {
+                self.read_map.insert(id, read);
+            }
         }
     }
 }
@@ -106,10 +156,17 @@ impl Request {
 }
 
 impl Request {
-    pub async fn response<S: AsyncRead + Unpin>(
+    pub async fn response_async<S: AsyncRead + Unpin>(
         self,
         session: &mut BsonCommandSession<S>,
     ) -> Result<BsonCommand<Document>, ReadError> {
-        session.read_id(self.0).await
+        session.read_id_async(self.0).await
+    }
+
+    pub fn response<S: Read>(
+        self,
+        session: &mut BsonCommandSession<S>,
+    ) -> Result<BsonCommand<Document>, ReadError> {
+        session.read_id(self.0)
     }
 }
