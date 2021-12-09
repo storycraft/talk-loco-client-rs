@@ -5,6 +5,8 @@
  */
 
 use std::{
+    error::Error,
+    fmt::Display,
     io::{Cursor, Read, Write},
     string::FromUtf8Error,
 };
@@ -38,6 +40,17 @@ impl From<bson::ser::Error> for WriteError {
     }
 }
 
+impl Display for WriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WriteError::Codec(err) => err.fmt(f),
+            WriteError::Encode(err) => err.fmt(f),
+        }
+    }
+}
+
+impl Error for WriteError {}
+
 #[derive(Debug)]
 pub enum ReadError {
     Stream(StreamError),
@@ -66,6 +79,19 @@ impl From<bson::de::Error> for ReadError {
         Self::Decode(err)
     }
 }
+
+impl Display for ReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReadError::Stream(err) => err.fmt(f),
+            ReadError::Corrupted(err) => write!(f, "Read stream corrupted. status: {}", err.header.status),
+            ReadError::InvalidMethod(err) => err.fmt(f),
+            ReadError::Decode(err) => err.fmt(f),
+        }
+    }
+}
+
+impl Error for ReadError {}
 
 /// [BsonCommand] read / write manager
 #[derive(Debug)]
@@ -104,16 +130,13 @@ impl<S> BsonCommandManager<S> {
     }
 
     pub fn into_inner(self) -> S {
-        self.codec.unwrap()
+        self.codec.into_inner()
     }
 }
 
 impl<S: Write> BsonCommandManager<S> {
     /// Write [BsonCommand]. returns request_id on success
-    pub fn write<T: Serialize>(
-        &mut self,
-        command: &BsonCommand<T>,
-    ) -> Result<i32, WriteError> {
+    pub fn write<T: Serialize>(&mut self, command: &BsonCommand<T>) -> Result<i32, WriteError> {
         let request_id = self.current_id;
         self.current_id += 1;
 
@@ -136,14 +159,7 @@ impl<S: Read> BsonCommandManager<S> {
 
             let data = bson::Document::from_reader(&mut Cursor::new(command.data))?;
 
-            Ok((
-                id,
-                BsonCommand {
-                    method,
-                    data_type: command.header.data_type,
-                    data,
-                },
-            ))
+            Ok((id, BsonCommand::new(method, command.header.data_type, data)))
         } else {
             Err(ReadError::Corrupted(command))
         }
@@ -178,21 +194,17 @@ impl<S: AsyncRead + Unpin> BsonCommandManager<S> {
 
             let data = bson::Document::from_reader(&mut Cursor::new(command.data))?;
 
-            Ok((
-                id,
-                BsonCommand {
-                    method,
-                    data_type: command.header.data_type,
-                    data,
-                },
-            ))
+            Ok((id, BsonCommand::new(method, command.header.data_type, data)))
         } else {
             Err(ReadError::Corrupted(command))
         }
     }
 }
 
-fn encode_bson_command<T: Serialize>(request_id: i32, command: &BsonCommand<T>) -> Result<Command, bson::ser::Error> {
+fn encode_bson_command<T: Serialize>(
+    request_id: i32,
+    command: &BsonCommand<T>,
+) -> Result<Command, bson::ser::Error> {
     let builder = CommandBuilder::new(request_id, &command.method);
 
     let mut raw_data = Vec::new();

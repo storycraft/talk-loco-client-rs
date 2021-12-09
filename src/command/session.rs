@@ -67,23 +67,19 @@ impl<S: Write> BsonCommandSession<S> {
     pub fn request<T: Serialize>(
         &mut self,
         command: &BsonCommand<T>,
-    ) -> Result<Request, WriteError> {
-        let request_id = self.manager.write(command)?;
-
-        Ok(Request(request_id))
+    ) -> Result<i32, WriteError> {
+        self.manager.write(command)
     }
 }
 
 impl<S: AsyncWrite + Unpin> BsonCommandSession<S> {
     /// Send and create response ticket of this request asynchronously.
-    /// The response is guaranteed to have same id of request command.
+    /// The response is guaranteed to have same id returned.
     pub async fn request_async<T: Serialize>(
         &mut self,
         command: &BsonCommand<T>,
-    ) -> Result<Request, WriteError> {
-        let request_id = self.manager.write_async(command).await?;
-
-        Ok(Request(request_id))
+    ) -> Result<i32, WriteError> {
+        self.manager.write_async(command).await
     }
 }
 
@@ -98,15 +94,15 @@ impl<S: Read> BsonCommandSession<S> {
         }
     }
 
-    /// Read [BsonCommand] with specific id
-    pub fn read_id(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
+    /// Read [BsonCommand] response
+    pub fn response(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
         if let Some(read) = self.read_map.remove(&id) {
             return Ok(read);
         }
 
         loop {
             let (read_id, read) = self.manager.read()?;
-            
+
             if read_id == id {
                 return Ok(read);
             } else {
@@ -127,8 +123,8 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
         }
     }
 
-    /// Read [BsonCommand] with specific id asynchronously
-    pub async fn read_id_async(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
+    /// Read [BsonCommand] response asynchronously
+    pub async fn response_async(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
         if let Some(read) = self.read_map.remove(&id) {
             return Ok(read);
         }
@@ -142,31 +138,5 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
                 self.read_map.insert(id, read);
             }
         }
-    }
-}
-
-/// Pending [BsonCommand] request
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Request(i32);
-
-impl Request {
-    pub fn request_id(&self) -> i32 {
-        self.0
-    }
-}
-
-impl Request {
-    pub async fn response_async<S: AsyncRead + Unpin>(
-        self,
-        session: &mut BsonCommandSession<S>,
-    ) -> Result<BsonCommand<Document>, ReadError> {
-        session.read_id_async(self.0).await
-    }
-
-    pub fn response<S: Read>(
-        self,
-        session: &mut BsonCommandSession<S>,
-    ) -> Result<BsonCommand<Document>, ReadError> {
-        session.read_id(self.0)
     }
 }

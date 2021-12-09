@@ -12,7 +12,7 @@ use std::{
 
 use futures::{AsyncRead, AsyncWrite};
 
-/// Write large data with specific chunk size
+/// Write large data to chunked
 #[derive(Debug, Clone)]
 pub struct ChunkedWriteStream<S> {
     stream: S,

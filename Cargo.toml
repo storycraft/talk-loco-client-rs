@@ -10,7 +10,6 @@ authors = ["storycraft <storycraft@pancake.sh>"]
 edition = "2021"
 
 [features]
-client = []
 wasm = ["loco-protocol/wasm"]
 
 [dependencies]
@@ -20,7 +19,8 @@ bson = "2.0.1"
 loco-protocol = { version = "4.0.0", path = "../loco-protocol-rs" }
 
 [dev-dependencies]
-rsa = "0.5.0"
+talk-api-client = { version = "0.1.0", path = "../talk-auth-client" }
+rsa = { version = "0.5.0", features = ["pem"] }
 tokio = { version = "1.9.0", features = ["full"] }
-tokio-util = { version = "0.6.7", features = ["compat"] }
+tokio-util = { version = "0.6.9", features = ["compat"] }
 pem = "1.0.1"

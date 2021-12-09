@@ -7,7 +7,7 @@
 use serde::{Serialize, Deserialize};
 
 /// Sync skipped chats.
-/// Official client send this when last log id written is different with actual last log id.
+/// Official client send this when last log id written is different compared to actual last log id.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncMsg {
 

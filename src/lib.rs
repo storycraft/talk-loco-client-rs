@@ -17,5 +17,4 @@ pub mod structs;
 pub mod command;
 pub mod stream;
 
-#[cfg(feature = "client")]
 pub mod client;
