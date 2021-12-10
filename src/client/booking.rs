@@ -6,21 +6,13 @@
 
 use futures::{AsyncRead, AsyncWrite};
 
-use crate::{
-    command::{session::BsonCommandSession, BsonCommand},
-    request, response,
-};
+use crate::{command::session::BsonCommandSession, request, response};
 
-use super::{RequestResult, request_response_async};
+use super::client_method;
 
 #[derive(Debug)]
 pub struct BookingClient<'a, S>(pub &'a mut BsonCommandSession<S>);
 
 impl<S: AsyncRead + AsyncWrite + Unpin> BookingClient<'_, S> {
-    pub async fn get_conf(
-        &mut self,
-        get_conf: &request::booking::GetConf,
-    ) -> RequestResult<response::booking::GetConf> {
-        request_response_async(&mut self.0, &BsonCommand::new_const("GETCONF", 0, get_conf)).await
-    }
+    client_method!(get_conf, "GETCONF", request::booking::GetConf => response::booking::GetConf);
 }

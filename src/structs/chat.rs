@@ -37,11 +37,9 @@ pub struct Chatlog {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 
-    /// Send time
-    ///
-    /// Multiply by 1000 to convert to Unix time
+    /// Send time in Unix time
     #[serde(rename = "sendAt")]
-    pub send_at: i32,
+    pub send_at: i64,
 
     /// Attachment content
     ///

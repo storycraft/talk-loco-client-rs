@@ -10,7 +10,11 @@ pub mod talk;
 
 pub mod media;
 
-use std::{error::Error, fmt::Display, io::{Read, Write}};
+use std::{
+    error::Error,
+    fmt::Display,
+    io::{Read, Write},
+};
 
 use futures::{AsyncRead, AsyncWrite};
 use serde::{de::DeserializeOwned, Serialize};
@@ -81,3 +85,24 @@ pub async fn request_response_async<D: DeserializeOwned>(
     let req = session.request_async(command).await?;
     Ok(session.response_async(req).await?.try_deserialize()?)
 }
+
+macro_rules! client_method {
+    ($name: ident, $method: literal, $request: ty => $response: ty) => {
+        pub async fn $name(
+            &mut self,
+            command: &$request,
+        ) -> crate::client::RequestResult<$response> {
+            crate::client::request_response_async(
+                &mut self.0,
+                &crate::command::BsonCommand::new_const($method, 0, command),
+            )
+            .await
+        }
+    };
+
+    ($name: ident, $method: literal, $request: ty) => {
+        client_method!($name, $method, $request => ());
+    };
+}
+
+use client_method;

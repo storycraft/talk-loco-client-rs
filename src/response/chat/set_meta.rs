@@ -7,7 +7,7 @@
 use serde::{Serialize, Deserialize};
 use crate::{ structs::chatroom::ChatroomMeta};
 
-/// SETMETA response
+/// [crate::request::chat::SetMeta] response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetMeta {
 

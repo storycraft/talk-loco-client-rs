@@ -4,14 +4,13 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use serde::{Serialize, Deserialize};
-use crate::{ structs::{openlink::OpenLinkUser, user::UserVariant}};
+use crate::structs::{openlink::OpenLinkUser, user::UserVariant};
+use serde::{Deserialize, Serialize};
 
 /// Contains user info, watermark list.
 /// Client can update chatroom information before opening chatroom window.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatOnRoom {
-
     /// Chatroom id
     #[serde(rename = "c")]
     pub chat_id: i64,
@@ -49,8 +48,38 @@ pub struct ChatOnRoom {
     #[serde(rename = "mi")]
     pub user_ids: Option<Vec<i64>>,
 
+    /// Latest chat log id
+    #[serde(rename = "l")]
+    pub last_log_id: i64,
+
     /// Client open link user if openchat
     #[serde(rename = "olu", skip_serializing_if = "Option::is_none")]
     pub open_link_user: Option<OpenLinkUser>,
 
+    #[serde(rename = "o")]
+    pub unknown_o: i64,
+
+    #[serde(rename = "jsi")]
+    pub unknown_jsi: i64,
+
+    /// Unknown (openchat)
+    #[serde(rename = "notiRead", skip_serializing_if = "Option::is_none")]
+    pub noti_read: Option<bool>,
+
+    /// Unknown
+    #[serde(rename = "f")]
+    pub unknown_f: bool,
+
+    /// Unknown JSON
+    #[serde(rename = "mr")]
+    pub unknown_mr: String,
+    
+    // #[serde(rename = "pct")]
+    // pub unknown_pct: unknown,
+
+    // #[serde(rename = "sui")]
+    // pub unknown_sui: unknown,
+
+    #[serde(rename = "msr", skip_serializing_if = "Option::is_none")]
+    pub unknown_msr: Option<i64>,
 }

@@ -4,12 +4,11 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Send before opening chatroom window. Notice server the user opening chatroom window.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatOnRoom {
-    
     /// Chatroom id
     #[serde(rename = "chatId")]
     pub chat_id: i64,
@@ -19,6 +18,5 @@ pub struct ChatOnRoom {
 
     /// Openlink token of chatroom if openchat.
     #[serde(rename = "opt", skip_serializing_if = "Option::is_none")]
-    pub open_token: Option<i32>
-
+    pub open_token: Option<i32>,
 }
