@@ -10,12 +10,9 @@ pub mod talk;
 
 pub mod media;
 
-use std::{
-    error::Error,
-    fmt::Display,
-    io::{Read, Write},
-};
+use std::{error::Error, fmt::Display, io::{Read, Write}};
 
+use futures::{AsyncRead, AsyncWrite};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
@@ -66,20 +63,21 @@ impl Error for RequestError {}
 
 pub type RequestResult<T> = Result<BsonCommand<ResponseData<T>>, RequestError>;
 
-pub trait LocoSessionExt {
-    fn request_response<D: DeserializeOwned>(
-        &mut self,
-        command: &BsonCommand<impl Serialize>,
-    ) -> RequestResult<D>;
+/// Convenience method for requesting command
+#[inline]
+pub fn request_response<D: DeserializeOwned>(
+    session: &mut BsonCommandSession<impl Read + Write>,
+    command: &BsonCommand<impl Serialize>,
+) -> RequestResult<D> {
+    let req = session.request(command)?;
+    Ok(session.response(req)?.try_deserialize()?)
 }
 
-impl<S: Write + Read> LocoSessionExt for BsonCommandSession<S> {
-    fn request_response<D: DeserializeOwned>(
-        &mut self,
-        command: &BsonCommand<impl Serialize>,
-    ) -> RequestResult<D> {
-        let req = self.request(&command)?;
-
-        Ok(self.response(req)?.try_deserialize()?)
-    }
+/// Convenience method for requesting command asynchronously
+pub async fn request_response_async<D: DeserializeOwned>(
+    session: &mut BsonCommandSession<impl AsyncRead + AsyncWrite + Unpin>,
+    command: &BsonCommand<impl Serialize>,
+) -> RequestResult<D> {
+    let req = session.request_async(command).await?;
+    Ok(session.response_async(req).await?.try_deserialize()?)
 }

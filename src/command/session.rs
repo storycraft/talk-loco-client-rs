@@ -64,10 +64,7 @@ impl<S> BsonCommandSession<S> {
 impl<S: Write> BsonCommandSession<S> {
     /// Send and create response ticket of this request.
     /// The response is guaranteed to have same id of request command.
-    pub fn request(
-        &mut self,
-        command: &BsonCommand<impl Serialize>,
-    ) -> Result<i32, WriteError> {
+    pub fn request(&mut self, command: &BsonCommand<impl Serialize>) -> Result<i32, WriteError> {
         self.manager.write(command)
     }
 }
