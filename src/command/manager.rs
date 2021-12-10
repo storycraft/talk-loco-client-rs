@@ -136,7 +136,7 @@ impl<S> BsonCommandManager<S> {
 
 impl<S: Write> BsonCommandManager<S> {
     /// Write [BsonCommand]. returns request_id on success
-    pub fn write<T: Serialize>(&mut self, command: &BsonCommand<T>) -> Result<i32, WriteError> {
+    pub fn write(&mut self, command: &BsonCommand<impl Serialize>) -> Result<i32, WriteError> {
         let request_id = self.current_id;
         self.current_id += 1;
 
@@ -168,9 +168,9 @@ impl<S: Read> BsonCommandManager<S> {
 
 impl<S: AsyncWrite + Unpin> BsonCommandManager<S> {
     /// Write [BsonCommand] async. returns request_id on success
-    pub async fn write_async<T: Serialize>(
+    pub async fn write_async(
         &mut self,
-        command: &BsonCommand<T>,
+        command: &BsonCommand<impl Serialize>,
     ) -> Result<i32, WriteError> {
         let request_id = self.current_id;
         self.current_id += 1;
@@ -201,9 +201,9 @@ impl<S: AsyncRead + Unpin> BsonCommandManager<S> {
     }
 }
 
-fn encode_bson_command<T: Serialize>(
+fn encode_bson_command(
     request_id: i32,
-    command: &BsonCommand<T>,
+    command: &BsonCommand<impl Serialize>,
 ) -> Result<Command, bson::ser::Error> {
     let builder = CommandBuilder::new(request_id, &command.method);
 

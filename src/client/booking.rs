@@ -6,14 +6,12 @@
 
 use std::io::{Read, Write};
 
-use futures::{AsyncRead, AsyncWrite};
-
 use crate::{
     command::{session::BsonCommandSession, BsonCommand},
     request, response,
 };
 
-use super::RequestResult;
+use super::{RequestResult, LocoSessionExt};
 
 #[derive(Debug)]
 pub struct BookingClient<'a, S>(pub &'a mut BsonCommandSession<S>);
@@ -23,23 +21,6 @@ impl<S: Read + Write> BookingClient<'_, S> {
         &mut self,
         get_conf: &request::booking::GetConf,
     ) -> RequestResult<response::booking::GetConf> {
-        let req = self
-            .0
-            .request(&BsonCommand::new_const("GETCONF", 0, get_conf))?;
-
-        Ok(self.0.response(req)?.try_deserialize()?)
-    }
-}
-
-impl<S: AsyncRead + AsyncWrite + Unpin> BookingClient<'_, S> {
-    pub async fn get_conf_async(
-        &mut self,
-        get_conf: &request::booking::GetConf,
-    ) -> RequestResult<response::booking::GetConf> {
-        let req = self
-            .0
-            .request_async(&BsonCommand::new_const("GETCONF", 0, get_conf)).await?;
-
-        Ok(self.0.response_async(req).await?.try_deserialize()?)
+        self.0.request_response(&BsonCommand::new_const("GETCONF", 0, get_conf))
     }
 }

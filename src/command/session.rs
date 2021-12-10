@@ -64,9 +64,9 @@ impl<S> BsonCommandSession<S> {
 impl<S: Write> BsonCommandSession<S> {
     /// Send and create response ticket of this request.
     /// The response is guaranteed to have same id of request command.
-    pub fn request<T: Serialize>(
+    pub fn request(
         &mut self,
-        command: &BsonCommand<T>,
+        command: &BsonCommand<impl Serialize>,
     ) -> Result<i32, WriteError> {
         self.manager.write(command)
     }
@@ -75,9 +75,9 @@ impl<S: Write> BsonCommandSession<S> {
 impl<S: AsyncWrite + Unpin> BsonCommandSession<S> {
     /// Send and create response ticket of this request asynchronously.
     /// The response is guaranteed to have same id returned.
-    pub async fn request_async<T: Serialize>(
+    pub async fn request_async(
         &mut self,
-        command: &BsonCommand<T>,
+        command: &BsonCommand<impl Serialize>,
     ) -> Result<i32, WriteError> {
         self.manager.write_async(command).await
     }
