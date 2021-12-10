@@ -20,6 +20,7 @@ loco-protocol = { version = "4.0.0", path = "../loco-protocol-rs" }
 
 [dev-dependencies]
 talk-api-client = { version = "0.1.0", path = "../talk-auth-client" }
+tokio-native-tls = "0.3.0"
 rsa = { version = "0.5.0", features = ["pem"] }
 tokio = { version = "1.9.0", features = ["full"] }
 tokio-util = { version = "0.6.9", features = ["compat"] }
