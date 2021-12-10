@@ -32,20 +32,14 @@ use tokio_util::compat::TokioAsyncReadCompatExt;
 
 pub const CONFIG: AuthClientConfig = AuthClientConfig::new_const(
     AuthDeviceConfig::new_const_pc(
-        // Device name
         "TEST_DEVICE",
-        // Unique id base64 encoded. 62 bytes
         "",
     ),
-    // lang
     "ko",
-    // Talk client version
     "3.2.8",
-    // Talk agent
     TalkApiAgent::Win32(Cow::Borrowed("10.0")),
 );
 
-// XVC hasher
 pub const HASHER: Win32XVCHasher = Win32XVCHasher::new_const("JAYDEN", "JAYMOND");
 
 pub static KEY: &str = "-----BEGIN PUBLIC KEY-----
@@ -68,6 +62,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         password: Cow::Borrowed(&args[2]),
     });
 
+    // Do auth using provided information
     let auth_res = do_login(&args[3], &method).await?;
     if auth_res.data.is_none() {
         println!("Auth failed with status: {}", auth_res.status);
@@ -87,6 +82,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         mccmnc: "999".into(),
     };
 
+    // Skipped booking process
+
+    // Checkin start
     let checkin_data = {
         let mut checkin_stream = SecureStream::new(
             CryptoStore::new(),
@@ -111,7 +109,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     println!("CHECKIN response: {:?}", checkin_data);
+    // Checkin end
 
+    // Login start
     let mut talk_stream = SecureStream::new(
         CryptoStore::new(),
         ChunkedWriteStream::new(
@@ -158,8 +158,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     println!("LOGINLIST response: {:?}", login_res_data);
+    // Login end
 
     loop {
+        // Read incoming broadcast commands
         let (read_id, read) = talk_conn.read_async().await?;
 
         println!("READ {}: {:?}", read_id, read);
