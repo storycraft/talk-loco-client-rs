@@ -12,7 +12,7 @@ use std::{
 };
 
 use bson::Document;
-use futures::{AsyncRead, AsyncWrite};
+use futures::{AsyncRead, AsyncWrite, AsyncWriteExt, io::Flush};
 use loco_protocol::command::{
     builder::CommandBuilder,
     codec::{CommandCodec, StreamError},
@@ -84,7 +84,9 @@ impl Display for ReadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReadError::Stream(err) => err.fmt(f),
-            ReadError::Corrupted(err) => write!(f, "Read stream corrupted. status: {}", err.header.status),
+            ReadError::Corrupted(err) => {
+                write!(f, "Read stream corrupted. status: {}", err.header.status)
+            }
             ReadError::InvalidMethod(err) => err.fmt(f),
             ReadError::Decode(err) => err.fmt(f),
         }
@@ -97,7 +99,7 @@ impl Error for ReadError {}
 #[derive(Debug)]
 pub struct BsonCommandManager<S> {
     current_id: i32,
-    codec: CommandCodec<S>,
+    stream: S,
 }
 
 impl<S> BsonCommandManager<S> {
@@ -105,24 +107,16 @@ impl<S> BsonCommandManager<S> {
     pub fn new(stream: S) -> Self {
         Self {
             current_id: 0,
-            codec: CommandCodec::new(stream),
+            stream,
         }
     }
 
-    pub fn codec(&self) -> &CommandCodec<S> {
-        &self.codec
-    }
-
-    pub fn codec_mut(&mut self) -> &mut CommandCodec<S> {
-        &mut self.codec
-    }
-
     pub fn stream(&self) -> &S {
-        self.codec.stream()
+        &self.stream
     }
 
     pub fn stream_mut(&mut self) -> &mut S {
-        self.codec.stream_mut()
+        &mut self.stream
     }
 
     pub fn current_id(&self) -> i32 {
@@ -130,7 +124,7 @@ impl<S> BsonCommandManager<S> {
     }
 
     pub fn into_inner(self) -> S {
-        self.codec.into_inner()
+        self.stream
     }
 }
 
@@ -141,17 +135,21 @@ impl<S: Write> BsonCommandManager<S> {
         self.current_id += 1;
 
         let command = encode_bson_command(request_id, command)?;
-
-        self.codec.write(&command)?;
+        CommandCodec::new(&mut self.stream).write(&command)?;
 
         Ok(request_id)
+    }
+
+    /// Flush inner stream
+    pub fn flush(&mut self) -> std::io::Result<()> {
+        self.stream.flush()
     }
 }
 
 impl<S: Read> BsonCommandManager<S> {
     /// Read [BsonCommand]. returns (request_id, [BsonCommand]) tuple
     pub fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
-        let (_, command) = self.codec.read()?;
+        let (_, command) = CommandCodec::new(&mut self.stream).read()?;
 
         if command.header.status == 0 {
             let id = command.header.id;
@@ -176,17 +174,23 @@ impl<S: AsyncWrite + Unpin> BsonCommandManager<S> {
         self.current_id += 1;
 
         let command = encode_bson_command(request_id, command)?;
-
-        self.codec.write_async(&command).await?;
+        CommandCodec::new(&mut self.stream)
+            .write_async(&command)
+            .await?;
 
         Ok(request_id)
+    }
+    
+    /// Flush inner stream async
+    pub fn flush_async(&mut self) -> Flush<'_, S> {
+        self.stream.flush()
     }
 }
 
 impl<S: AsyncRead + Unpin> BsonCommandManager<S> {
     /// Read [BsonCommand]. returns (request_id, [BsonCommand]) tuple
     pub async fn read_async(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
-        let (_, command) = self.codec.read_async().await?;
+        let (_, command) = CommandCodec::new(&mut self.stream).read_async().await?;
 
         if command.header.status == 0 {
             let id = command.header.id;

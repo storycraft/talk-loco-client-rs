@@ -11,6 +11,7 @@ use std::{
 
 use bson::Document;
 use futures::{AsyncRead, AsyncWrite};
+use loco_protocol::command::codec::StreamError;
 use serde::Serialize;
 
 use super::{
@@ -65,7 +66,12 @@ impl<S: Write> BsonCommandSession<S> {
     /// Send and create response ticket of this request.
     /// The response is guaranteed to have same id of request command.
     pub fn request(&mut self, command: &BsonCommand<impl Serialize>) -> Result<i32, WriteError> {
-        self.manager.write(command)
+        let id = self.manager.write(command)?;
+        self.manager
+            .flush()
+            .map_err(|err| WriteError::Codec(StreamError::Io(err)))?;
+
+        Ok(id)
     }
 }
 
@@ -76,7 +82,13 @@ impl<S: AsyncWrite + Unpin> BsonCommandSession<S> {
         &mut self,
         command: &BsonCommand<impl Serialize>,
     ) -> Result<i32, WriteError> {
-        self.manager.write_async(command).await
+        let id = self.manager.write_async(command).await?;
+        self.manager
+            .flush_async()
+            .await
+            .map_err(|err| WriteError::Codec(StreamError::Io(err)))?;
+
+        Ok(id)
     }
 }
 
