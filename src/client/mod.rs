@@ -87,7 +87,11 @@ pub async fn request_response_async<D: DeserializeOwned>(
 }
 
 macro_rules! client_method {
-    ($name: ident, $method: literal, $request: ty => $response: ty) => {
+    (
+        $(#[$meta:meta])*
+        $name: ident, $method: literal, $request: ty => $response: ty
+    ) => {
+        $(#[$meta])*
         pub async fn $name(
             &mut self,
             command: &$request,
