@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut checkin_client = CheckinClient(&mut checkin_conn);
 
     let checkin_res = checkin_client
-        .checkin(&request::checkin::Checkin {
+        .checkin(&request::checkin::CheckinReq {
             user_id: 1,
             client: ClientInfo {
                 os: "win32".into(),

@@ -6,4 +6,4 @@
 
 pub mod get_conf;
 
-pub use get_conf::GetConf;
+pub use get_conf::GetConfReq;

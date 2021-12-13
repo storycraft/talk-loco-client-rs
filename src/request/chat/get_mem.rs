@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Request simplified member list of chatroom.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GetMem {
+pub struct GetMemReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

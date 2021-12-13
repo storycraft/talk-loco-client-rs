@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
  
 /// Answer loco server information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Checkin {
+pub struct CheckinRes {
 
     /// Loco server ip
     pub host: String,

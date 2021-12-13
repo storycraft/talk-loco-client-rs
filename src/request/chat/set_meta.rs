@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Set Chatroom meta
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SetMeta {
+pub struct SetMetaReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

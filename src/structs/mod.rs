@@ -6,7 +6,7 @@
 
 pub mod connection;
 pub mod client;
-pub mod chatroom;
+pub mod channel_info;
 pub mod openlink;
 pub mod chat;
 pub mod user;

@@ -9,7 +9,7 @@ use crate::{ structs::user::UserVariant};
 
 /// Responses detailed members of chatroom.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Member {
+pub struct MemberRes {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

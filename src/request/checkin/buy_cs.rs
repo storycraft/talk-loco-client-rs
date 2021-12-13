@@ -10,7 +10,7 @@ use crate::{ structs::client::ClientInfo};
 /// Request call server host data.
 /// Checkin response already contains call server info
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BuyCS {
+pub struct BuyCSReq {
 
     #[serde(flatten)]
     pub client: ClientInfo,

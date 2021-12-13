@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Update chatroom push setting
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateChat {
+pub struct UpdateChatReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

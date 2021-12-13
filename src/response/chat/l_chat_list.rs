@@ -5,13 +5,13 @@
  */
 
 use serde::{Serialize, Deserialize};
-use crate::{ structs::chatroom::ChatroomListData};
+use crate::{ structs::channel_info::ChannelListData};
 
 /// Request every chatroom list
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LChatList {
+pub struct LChatListRes {
 
     #[serde(rename = "chatDatas")]
-    pub chat_datas: Vec<ChatroomListData>
+    pub chat_datas: Vec<ChannelListData>
 
 }

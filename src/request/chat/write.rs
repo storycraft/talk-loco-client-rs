@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Write message to chatroom
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Write {
+pub struct WriteReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]
@@ -16,7 +16,7 @@ pub struct Write {
 
     /// Chat type
     #[serde(rename = "type")]
-    pub chat_type: i8,
+    pub chat_type: i32,
 
     /// Message id
     ///

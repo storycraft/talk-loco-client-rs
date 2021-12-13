@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Request every chatroom list
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LChatList {
+pub struct LChatListReq {
 
     /// Known chatroom id list
     #[serde(rename = "chatIds")]

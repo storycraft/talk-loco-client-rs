@@ -11,14 +11,24 @@ Example command data implementation.
 ```rust
 use serde::{Serialize, Deserialize};
 
+// Add `Req` suffix to request
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SampleData {
-    
-    pub status: i16,
-    pub message: String
+pub struct SampleDataReq {
+    pub request: String
+}
 
+
+// Add `Res` suffix to response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SampleDataRes {
+    pub response: String
 }
 ```
+
+### Word convention
+chat room, channel, ... => channel
+member, user, ... => user
+message, chat, ... => chat
 
 ## License
 ```

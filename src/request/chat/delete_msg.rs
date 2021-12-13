@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Delete chat. Official server only deletes message sent before 5 mins max.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeleteMsg {
+pub struct DeleteMsgReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

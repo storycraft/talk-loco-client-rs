@@ -93,7 +93,7 @@ macro_rules! client_method {
             command: &$request,
         ) -> crate::client::RequestResult<$response> {
             crate::client::request_response_async(
-                &mut self.0,
+                self.0,
                 &crate::command::BsonCommand::new_const($method, 0, command),
             )
             .await

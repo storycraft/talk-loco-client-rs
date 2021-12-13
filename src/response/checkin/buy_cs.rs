@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
  
 /// Answer call server information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BuyCS {
+pub struct BuyCSRes {
 
     /// Call server ip
     #[serde(rename = "cshost")]

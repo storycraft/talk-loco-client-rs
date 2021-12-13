@@ -9,7 +9,7 @@ use crate::{ structs::chat::Chatlog};
 
 /// Responses chatlogs between "current" and "max". Chatlog list sliced to 300 or "max" value max.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SyncMsg {
+pub struct SyncMsgRes {
 
     /// true if no more chat left below.
     #[serde(rename = "isOK")]

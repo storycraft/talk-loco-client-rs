@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Request checkin server information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GetConf {
+pub struct GetConfReq {
 
     /// Network MCCMNC
     #[serde(rename = "MCCMNC")]

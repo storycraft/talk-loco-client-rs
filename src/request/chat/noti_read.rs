@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Read message in chatroom
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NotiRead {
+pub struct NotiReadReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

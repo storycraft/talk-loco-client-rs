@@ -7,11 +7,11 @@
 use serde::{Serialize, Deserialize};
 use crate::{ structs::client::ClientInfo};
 
-use super::LChatList;
+use super::LChatListReq;
 
 /// Login to loco server
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoginList {
+pub struct LoginListReq {
 
     #[serde(flatten)]
     pub client: ClientInfo,
@@ -42,7 +42,7 @@ pub struct LoginList {
     pub rp: (),
 
     #[serde(flatten)]
-    pub chat_list: LChatList,
+    pub chat_list: LChatListReq,
 
     /// Unknown
     #[serde(rename = "lbk")]

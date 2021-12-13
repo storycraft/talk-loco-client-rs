@@ -9,7 +9,7 @@ use crate::{ structs::client::ClientInfo};
 
 /// Request loco server host data
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Checkin {
+pub struct CheckinReq {
 
     /// Client user id. Login to acquire.
     #[serde(rename = "userId")]

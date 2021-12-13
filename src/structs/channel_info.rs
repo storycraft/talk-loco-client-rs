@@ -4,15 +4,14 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use super::{chat::Chatlog, user::DisplayUserInfo, openlink::OpenLinkId};
+use super::{chat::Chatlog, openlink::OpenLinkId, user::DisplayUserInfo};
 
 /// LOGINLIST chatroom list item.
 /// Including essential chatroom info.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatroomListData {
-
+pub struct ChannelListData {
     /// Chatroom id
     #[serde(rename = "c")]
     pub id: i64,
@@ -26,7 +25,7 @@ pub struct ChatroomListData {
     /// * openchat group = "OM"
     /// * openchat direct = "OD"
     #[serde(rename = "t")]
-    pub chatroom_type: String,
+    pub channel_type: String,
 
     /// Last chat log id
     #[serde(rename = "ll")]
@@ -47,8 +46,6 @@ pub struct ChatroomListData {
     // /// Chatroom metadata(?)
     // #[serde(rename = "m")]
     // pub metadata: ()
-    
-    
     /// Push alert setting
     #[serde(rename = "p")]
     pub push_alert: bool,
@@ -77,12 +74,11 @@ pub struct ChatroomListData {
 
     /// Unknown. Only appears on non openchat rooms.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub jn: Option<i32>
+    pub jn: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatroomInfo {
-
+pub struct ChannelInfo {
     /// Chatroom id
     #[serde(rename = "chatId")]
     pub chat_id: i64,
@@ -90,7 +86,7 @@ pub struct ChatroomInfo {
     /// Chatroom type.
     /// Check ChatroomListData chatroom_type for types.
     #[serde(rename = "type")]
-    pub chatroom_type: String,
+    pub channel_type: String,
 
     /// Only present if chatroom is openchat
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
@@ -106,11 +102,14 @@ pub struct ChatroomInfo {
 
     /// Unread message count
     #[serde(rename = "newMessageCount")]
-    pub new_message_count: i32,
-    
+    pub new_chat_count: i32,
+
     /// true if new_message_count is invalid(?). Does not present on openchat.
-    #[serde(rename = "invalidNewMessageCount", skip_serializing_if = "Option::is_none")]
-    pub new_message_count_invalid: Option<bool>,
+    #[serde(
+        rename = "invalidNewMessageCount",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub new_chat_count_invalid: Option<bool>,
 
     // /// Chatroom metadata(?)
     // #[serde(rename = "m")]
@@ -123,7 +122,6 @@ pub struct ChatroomInfo {
     // /// Unknown
     // #[serde(rename = "lastMessage")]
     // pub last_message: Option<()>,
-
     /// Last chat log id
     #[serde(rename = "lastLogId")]
     pub last_log_id: i64,
@@ -142,7 +140,7 @@ pub struct ChatroomInfo {
 
     /// Chatroom metas
     #[serde(rename = "chatMetas")]
-    pub chat_metas: Vec<ChatroomMeta>,
+    pub channel_metas: Vec<ChannelMeta>,
 
     /// true if Openchat direct chat. Only presents on openchat room.
     #[serde(rename = "directChat")]
@@ -154,8 +152,7 @@ pub struct ChatroomInfo {
 
     /// true if room is invalid(Only client user left, etc.). (?) Does not present on openchat room.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub left: Option<bool>
-
+    pub left: Option<bool>,
 }
 
 /// Chatroom meta. Like chatroom profile, notice, etc.
@@ -163,9 +160,8 @@ pub struct ChatroomInfo {
 /// serde does not support integer tag yet. We will switch to enum as fast as the support added.
 /// Check serde#745
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatroomMeta {
-
-    /// Meta type. See ChatroomMetaType for predefined types.
+pub struct ChannelMeta {
+    /// Meta type. See [ChannelMetaType] for predefined types.
     #[serde(rename = "type")]
     pub meta_type: i8,
 
@@ -175,18 +171,16 @@ pub struct ChatroomMeta {
     #[serde(rename = "authorId")]
     pub author_id: i64,
 
-    /// Updated time. Multiply by 1000 to convert to Unix time.
+    /// Updated time in Unix time.
     #[serde(rename = "updatedAt")]
     pub updated_at: i32,
 
-    /// Json or String content. Different depending on type.
-    pub content: String
-    
+    /// Json or String content depending on type.
+    pub content: String,
 }
 
 #[repr(i8)]
-pub enum ChatroomMetaType {
-
+pub enum ChannelMetaType {
     Notice = 1,
     Group = 2,
     Title = 3,
@@ -199,5 +193,4 @@ pub enum ChatroomMetaType {
     LiveTalkCount = 12,
     OpenChatChat = 13,
     Bot = 14,
-    
 }

@@ -25,7 +25,7 @@ pub struct Chatlog {
 
     /// Chat type
     #[serde(rename = "type")]
-    pub chat_type: i8,
+    pub chat_type: i32,
 
     /// Sender id
     #[serde(rename = "authorId")]

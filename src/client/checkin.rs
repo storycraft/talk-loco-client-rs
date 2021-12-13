@@ -14,7 +14,7 @@ use super::client_method;
 pub struct CheckinClient<'a, S>(pub &'a mut BsonCommandSession<S>);
 
 impl<S: AsyncWrite + AsyncRead + Unpin> CheckinClient<'_, S> {
-    client_method!(checkin, "CHECKIN", request::checkin::Checkin => response::checkin::Checkin);
+    client_method!(checkin, "CHECKIN", request::checkin::CheckinReq => response::checkin::CheckinRes);
 
-    client_method!(buy_cs, "BUYCS", request::checkin::BuyCS => response::checkin::BuyCS);
+    client_method!(buy_cs, "BUYCS", request::checkin::BuyCSReq => response::checkin::BuyCSRes);
 }

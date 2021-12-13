@@ -4,19 +4,17 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use serde::{Serialize, Deserialize};
-use crate::{ structs::chatroom::ChatroomInfo};
+use crate::structs::channel_info::ChannelInfo;
+use serde::{Deserialize, Serialize};
 
-/// Chatroom info response
+/// [crate::request::chat::ChatInfoReq] response
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatInfo {
-
-    /// Chatroom info
+pub struct ChatInfoRes {
+    /// Channel info
     #[serde(rename = "chatInfo")]
-    pub chat_info: ChatroomInfo,
+    pub chat_info: ChannelInfo,
 
     /// Unknown. Only appears on openchat rooms.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub o: Option<i32>
-
+    pub o: Option<i32>,
 }

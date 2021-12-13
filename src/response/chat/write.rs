@@ -7,9 +7,9 @@
 use crate::structs::chat::Chatlog;
 use serde::{Deserialize, Serialize};
 
-/// [crate::request::chat::Write] response
+/// [crate::request::chat::WriteReq] response
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Write {
+pub struct WriteRes {
     /// Chatroom id
     #[serde(rename = "chatId")]
     pub chat_id: i64,

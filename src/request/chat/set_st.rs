@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Update client status
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SetSt {
+pub struct SetStReq {
 
     /// Status
     ///

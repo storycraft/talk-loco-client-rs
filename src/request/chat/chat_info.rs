@@ -4,14 +4,12 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Request Chatroom info
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatInfo {
-
+pub struct ChatInfoReq {
     /// Chatroom id
     #[serde(rename = "chatId")]
-    pub chat_id: i64
-
+    pub chat_id: i64,
 }

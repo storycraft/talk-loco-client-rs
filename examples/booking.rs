@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut booking_client = BookingClient(&mut booking_conn);
 
     let booking_res = booking_client
-        .get_conf(&request::booking::GetConf {
+        .get_conf(&request::booking::GetConfReq {
             os: "win32".into(),
             mccmnc: "999".into(),
             model: "".into(),

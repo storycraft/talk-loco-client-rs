@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// Contains user info, watermark list.
 /// Client can update chatroom information before opening chatroom window.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatOnRoom {
+pub struct ChatOnRoomRes {
     /// Chatroom id
     #[serde(rename = "c")]
     pub chat_id: i64,

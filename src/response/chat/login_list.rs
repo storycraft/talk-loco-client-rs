@@ -6,19 +6,19 @@
 
 use serde::{Serialize, Deserialize};
 
-use super::LChatList;
+use super::LChatListRes;
 
 /// Contains userId, tokens, chatroom list.
 /// The purposes of tokens, revisions are unknown yet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoginList {
+pub struct LoginListRes {
 
     /// Logon user id
     #[serde(rename = "userId")]
     pub user_id: i64,
 
     #[serde(flatten)]
-    pub chat_list: LChatList,
+    pub chat_list: LChatListRes,
 
     /// Deleted chatroom ids(?)
     #[serde(rename = "delChatIds")]

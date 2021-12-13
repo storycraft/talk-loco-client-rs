@@ -5,7 +5,7 @@
  */
 
 use serde::{Serialize, Deserialize};
-use crate::{ structs::{chat::Chatlog, chatroom::ChatroomInfo}};
+use crate::{ structs::{chat::Chatlog, channel_info::ChannelInfo}};
 
 /// Sync Chatroom join
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +41,7 @@ pub struct SyncLinkCr {
 
     /// Only presents if the openlink is openchat.
     #[serde(rename = "chatRoom", skip_serializing_if = "Option::is_none")]
-    pub chat_room: Option<ChatroomInfo>
+    pub chat_room: Option<ChannelInfo>
 
 }
 

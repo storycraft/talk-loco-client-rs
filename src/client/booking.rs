@@ -14,5 +14,5 @@ use super::client_method;
 pub struct BookingClient<'a, S>(pub &'a mut BsonCommandSession<S>);
 
 impl<S: AsyncRead + AsyncWrite + Unpin> BookingClient<'_, S> {
-    client_method!(get_conf, "GETCONF", request::booking::GetConf => response::booking::GetConf);
+    client_method!(get_conf, "GETCONF", request::booking::GetConfReq => response::booking::GetConfRes);
 }

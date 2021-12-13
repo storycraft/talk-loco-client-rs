@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 /// Request detailed members of chatroom.
 /// Official client send this when clicking profile on chatroom.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Member {
+pub struct MemberReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

@@ -23,7 +23,7 @@ use talk_api_client::{
 use talk_loco_client::{
     client::{checkin::CheckinClient, talk::TalkClient, RequestResult},
     command::{manager::BsonCommandManager, session::BsonCommandSession},
-    request::{self, chat::{LoginList, LChatList}}, response,
+    request::{self, chat::{LoginListReq, LChatListReq}}, response,
     stream::ChunkedWriteStream,
     structs::client::ClientInfo,
 };
@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let login_res_data = {
         let mut talk_client = TalkClient(&mut talk_conn);
 
-        let login_res = talk_client.login(&LoginList {
+        let login_res = talk_client.login(&LoginListReq {
             client,
             protocol_version: "1".into(),
             device_uuid: args[3].clone(),
@@ -139,7 +139,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             device_type: 2,
             revision: 0,
             rp: (),
-            chat_list: LChatList {
+            chat_list: LChatListReq {
                 chat_ids: Vec::new(),
                 max_ids: Vec::new(),
                 last_token_id: 0,
@@ -185,12 +185,13 @@ pub async fn do_login(
 pub async fn do_checkin(
     stream: impl AsyncRead + AsyncWrite + Unpin,
     client_info: ClientInfo,
-) -> RequestResult<response::checkin::Checkin> {
+) -> RequestResult<response::checkin::CheckinRes> {
     let mut conn = BsonCommandSession::new(BsonCommandManager::new(stream));
     let mut client = CheckinClient(&mut conn);
 
     Ok(client
-        .checkin(&request::checkin::Checkin {
+        .checkin(&request::checkin::CheckinReq {
+            // Should be actual user id. but any numbers work
             user_id: 1,
             client: client_info,
             language: "ko".into(),

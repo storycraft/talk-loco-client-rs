@@ -9,7 +9,7 @@ use crate::{ structs::connection::{ConnectionData, HostData}};
 
 /// Answer checkin server information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GetConf {
+pub struct GetConfRes {
 
     /// Unknown
     pub revision: i32,

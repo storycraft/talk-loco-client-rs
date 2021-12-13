@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// Send before opening chatroom window. Notice server the user opening chatroom window.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatOnRoom {
+pub struct ChatOnRoomReq {
     /// Chatroom id
     #[serde(rename = "chatId")]
     pub chat_id: i64,

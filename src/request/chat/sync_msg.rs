@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 /// Sync skipped chats.
 /// Official client send this when last log id written is different compared to actual last log id.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SyncMsg {
+pub struct SyncMsgReq {
 
     /// Chatroom id
     #[serde(rename = "chatId")]

@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 
 /// Leave chatroom
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Leave {
+pub struct LeaveRes {
 
     /// Last token(?) id
     #[serde(rename = "lastTokenId")]
