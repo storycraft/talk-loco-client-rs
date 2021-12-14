@@ -4,8 +4,8 @@ Official client/server compatible Loco client implementation
 ## Contributing
 
 ### Command
-See `src/request`, `src/response` directory for already implemented command datas.
-For data structs used in many places see `src/structs`.
+Check `src/request`, `src/response` directory for already implemented command datas.
+For data structs used in many places check `src/structs`.
 
 Example command data implementation.
 ```rust
@@ -26,9 +26,9 @@ pub struct SampleDataRes {
 ```
 
 ### Word convention
-chat room, channel, ... => channel
-member, user, ... => user
-message, chat, ... => chat
+* chat room, channel, ... => channel
+* member, user, ... => user
+* message, chat, ... => chat
 
 ## License
 TalkLocoClient is following MIT license.
