@@ -16,6 +16,7 @@ wasm = ["loco-protocol/wasm"]
 serde = { version = "1.0", features = ["derive"] }
 futures = "0.3.16"
 bson = "2.0.1"
+indexmap = "1.7.0"
 loco-protocol = { version = "4.0.0", path = "../loco-protocol-rs" }
 
 [dev-dependencies]

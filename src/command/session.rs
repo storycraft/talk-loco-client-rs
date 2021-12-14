@@ -5,12 +5,12 @@
  */
 
 use std::{
-    collections::BTreeMap,
     io::{Read, Write},
 };
 
 use bson::Document;
 use futures::{AsyncRead, AsyncWrite};
+use indexmap::IndexMap;
 use loco_protocol::command::codec::StreamError;
 use serde::Serialize;
 
@@ -42,7 +42,7 @@ impl From<ReadError> for RequestError {
 /// Useful when creating client.
 #[derive(Debug)]
 pub struct BsonCommandSession<S> {
-    read_map: BTreeMap<i32, BsonCommand<Document>>,
+    read_map: IndexMap<i32, BsonCommand<Document>>,
 
     manager: BsonCommandManager<S>,
 }
@@ -51,7 +51,7 @@ impl<S> BsonCommandSession<S> {
     /// Create new [BsonCommandSession]
     pub fn new(manager: BsonCommandManager<S>) -> Self {
         Self {
-            read_map: BTreeMap::new(),
+            read_map: IndexMap::new(),
             manager,
         }
     }
@@ -96,7 +96,7 @@ impl<S: Read> BsonCommandSession<S> {
     /// Read next [BsonCommand]
     pub fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
-            Ok((next_id, self.read_map.remove(&next_id).unwrap()))
+            Ok((next_id, self.read_map.shift_remove(&next_id).unwrap()))
         } else {
             let read = self.manager.read()?;
             Ok(read)
@@ -105,7 +105,7 @@ impl<S: Read> BsonCommandSession<S> {
 
     /// Read [BsonCommand] response
     pub fn response(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
-        if let Some(read) = self.read_map.remove(&id) {
+        if let Some(read) = self.read_map.shift_remove(&id) {
             return Ok(read);
         }
 
@@ -125,7 +125,7 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
     /// Read next [BsonCommand] asynchronously
     pub async fn read_async(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
-            Ok((next_id, self.read_map.remove(&next_id).unwrap()))
+            Ok((next_id, self.read_map.shift_remove(&next_id).unwrap()))
         } else {
             let read = self.manager.read_async().await?;
             Ok(read)
@@ -134,7 +134,7 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
 
     /// Read [BsonCommand] response asynchronously
     pub async fn response_async(&mut self, id: i32) -> Result<BsonCommand<Document>, ReadError> {
-        if let Some(read) = self.read_map.remove(&id) {
+        if let Some(read) = self.read_map.shift_remove(&id) {
             return Ok(read);
         }
 

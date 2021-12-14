@@ -23,7 +23,11 @@ use talk_api_client::{
 use talk_loco_client::{
     client::{checkin::CheckinClient, talk::TalkClient, RequestResult},
     command::{manager::BsonCommandManager, session::BsonCommandSession},
-    request::{self, chat::{LoginListReq, LChatListReq}}, response,
+    request::{
+        self,
+        chat::{LChatListReq, LoginListReq},
+    },
+    response,
     stream::ChunkedWriteStream,
     structs::client::ClientInfo,
 };
@@ -31,10 +35,7 @@ use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncReadCompatExt;
 
 pub const CONFIG: AuthClientConfig = AuthClientConfig::new_const(
-    AuthDeviceConfig::new_const_pc(
-        "TEST_DEVICE",
-        "",
-    ),
+    AuthDeviceConfig::new_const_pc("TEST_DEVICE", ""),
     "ko",
     "3.2.8",
     TalkApiAgent::Win32(Cow::Borrowed("10.0")),
@@ -42,9 +43,7 @@ pub const CONFIG: AuthClientConfig = AuthClientConfig::new_const(
 
 pub const HASHER: Win32XVCHasher = Win32XVCHasher::new_const("JAYDEN", "JAYMOND");
 
-pub static KEY: &str = "-----BEGIN PUBLIC KEY-----
-MIIBIDANBgkqhkiG9w0BAQEFAAOCAQ0AMIIBCAKCAQEApElgRBx+g7sniYFW7LE8ivrwXShKTRFV8lXNItMXbN5QSC8vJ/cTSOTS619Xv5Zx7xXJIk4EKxtWesEGbgZpEUP2xQ+IeH9oz0JxayEMvvD1nVNAWgpWE4pociEoArsK7qY3YwXb1CiDHo9hojLv7djbo3cwXvlyMh4TUrX2RjCZPlVJxk/LVjzcl9ohJLkl3eoSrf0AE4kQ9mk3+raEhq5Dv+IDxKYX+fIytUWKmrQJusjtre9oVUX5sBOYZ0dzez/XapusEhUWImmB6mciVXfRXQ8IK4IH6vfNyxMSOTfLEhRYN2SMLzplAYFiMV536tLS3VmG5GJRdkpDubqPeQIBAw==
------END PUBLIC KEY-----";
+pub static KEY: &str = include_str!("loco_public_key.pub");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -96,11 +95,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 2048,
             ),
         );
-    
+
         loco_session.handshake_async(&mut checkin_stream).await?;
-        
+
         let checkin_res = do_checkin(checkin_stream, client.clone()).await?;
-    
+
         if checkin_res.data.data.is_none() {
             println!("CHECKIN failed with status: {}", checkin_res.data.status);
             return Ok(());
@@ -130,25 +129,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let login_res_data = {
         let mut talk_client = TalkClient(&mut talk_conn);
 
-        let login_res = talk_client.login(&LoginListReq {
-            client,
-            protocol_version: "1".into(),
-            device_uuid: args[3].clone(),
-            oauth_token: auth_data.credential.access_token,
-            language: "ko".into(),
-            device_type: 2,
-            revision: 0,
-            rp: (),
-            chat_list: LChatListReq {
-                chat_ids: Vec::new(),
-                max_ids: Vec::new(),
-                last_token_id: 0,
-                last_chat_id: None,
-            },
-            last_block_token: 0,
-            background: false,
-        }).await?;
-        
+        let login_res = talk_client
+            .login(&LoginListReq {
+                client,
+                protocol_version: "1".into(),
+                device_uuid: args[3].clone(),
+                oauth_token: auth_data.credential.access_token,
+                language: "ko".into(),
+                device_type: 2,
+                revision: 0,
+                rp: (),
+                chat_list: LChatListReq {
+                    chat_ids: Vec::new(),
+                    max_ids: Vec::new(),
+                    last_token_id: 0,
+                    last_chat_id: None,
+                },
+                last_block_token: 0,
+                background: false,
+            })
+            .await?;
+
         if login_res.data.data.is_none() {
             println!("LOGINLIST failed with status: {}", login_res.data.status);
             return Ok(());
