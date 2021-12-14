@@ -26,6 +26,6 @@ pub struct CheckinReq {
 
     /// Subdevice(PC, Tablet) or not
     #[serde(rename = "useSub")]
-    pub use_usb: bool
+    pub use_sub: bool
 
 }

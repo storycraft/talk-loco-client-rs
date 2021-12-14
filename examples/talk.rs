@@ -197,7 +197,7 @@ pub async fn do_checkin(
             client: client_info,
             language: "ko".into(),
             country_iso: "KR".into(),
-            use_usb: true,
+            use_sub: true,
         })
         .await?)
 }

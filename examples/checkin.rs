@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             language: "ko".into(),
             country_iso: "KR".into(),
-            use_usb: true,
+            use_sub: true,
         })
         .await?;
 
