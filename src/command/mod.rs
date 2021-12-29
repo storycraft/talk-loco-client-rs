@@ -4,7 +4,7 @@
  * Copyright (c) storycraft. Licensed under the MIT Licence.
  */
 
-pub mod manager;
+pub mod codec;
 pub mod session;
 
 use std::borrow::Cow;
@@ -48,4 +48,10 @@ impl BsonCommand<Document> {
             }
         )
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ReadBsonCommand<T> {
+    pub read_id: i32,
+    pub command: BsonCommand<T>
 }

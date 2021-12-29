@@ -11,11 +11,8 @@ use loco_protocol::secure::{
 };
 use rsa::{pkcs8::FromPublicKey, RsaPublicKey};
 use talk_loco_client::{
-    client::checkin::CheckinClient,
-    command::{manager::BsonCommandManager, session::BsonCommandSession},
-    request,
-    stream::ChunkedWriteStream,
-    structs::client::ClientInfo,
+    client::checkin::CheckinClient, command::session::BsonCommandSession, request,
+    stream::ChunkedWriteStream, structs::client::ClientInfo,
 };
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncReadCompatExt;
@@ -43,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loco_session.handshake_async(&mut stream).await?;
 
-    let mut checkin_conn = BsonCommandSession::new(BsonCommandManager::new(stream));
+    let mut checkin_conn = BsonCommandSession::new(stream);
     let mut checkin_client = CheckinClient(&mut checkin_conn);
 
     let checkin_res = checkin_client

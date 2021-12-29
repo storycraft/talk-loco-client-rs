@@ -8,7 +8,7 @@ use std::error::Error;
 
 use talk_loco_client::{
     client::booking::BookingClient,
-    command::{manager::BsonCommandManager, session::BsonCommandSession},
+    command::{session::BsonCommandSession},
     request,
     stream::ChunkedWriteStream,
 };
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         2048,
     );
 
-    let mut booking_conn = BsonCommandSession::new(BsonCommandManager::new(stream));
+    let mut booking_conn = BsonCommandSession::new(stream);
     let mut booking_client = BookingClient(&mut booking_conn);
 
     let booking_res = booking_client

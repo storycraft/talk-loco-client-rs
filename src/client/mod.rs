@@ -21,7 +21,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     command::{
-        manager::{ReadError, WriteError},
+        codec::{ReadError, WriteError},
         session::BsonCommandSession,
         BsonCommand,
     },

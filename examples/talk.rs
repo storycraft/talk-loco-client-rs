@@ -22,7 +22,7 @@ use talk_api_client::{
 };
 use talk_loco_client::{
     client::{checkin::CheckinClient, talk::TalkClient, RequestResult},
-    command::{manager::BsonCommandManager, session::BsonCommandSession},
+    command::{session::BsonCommandSession, ReadBsonCommand},
     request::{
         self,
         chat::{LChatListReq, LoginListReq},
@@ -124,7 +124,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loco_session.handshake_async(&mut talk_stream).await?;
 
-    let mut talk_conn = BsonCommandSession::new(BsonCommandManager::new(talk_stream));
+    let mut talk_conn = BsonCommandSession::new(talk_stream);
 
     let login_res_data = {
         let mut talk_client = TalkClient(&mut talk_conn);
@@ -163,9 +163,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         // Read incoming broadcast commands
-        let (read_id, read) = talk_conn.read_async().await?;
+        let ReadBsonCommand { read_id, command } = talk_conn.read_async().await?;
 
-        println!("READ {}: {:?}", read_id, read);
+        println!("READ {}: {:?}", read_id, command);
 
         thread::sleep(Duration::from_millis(1));
     }
@@ -187,7 +187,7 @@ pub async fn do_checkin(
     stream: impl AsyncRead + AsyncWrite + Unpin,
     client_info: ClientInfo,
 ) -> RequestResult<response::checkin::CheckinRes> {
-    let mut conn = BsonCommandSession::new(BsonCommandManager::new(stream));
+    let mut conn = BsonCommandSession::new(stream);
     let mut client = CheckinClient(&mut conn);
 
     Ok(client

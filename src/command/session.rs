@@ -15,8 +15,8 @@ use loco_protocol::command::codec::StreamError;
 use serde::Serialize;
 
 use super::{
-    manager::{BsonCommandManager, ReadError, WriteError},
-    BsonCommand,
+    codec::{BsonCommandCodec, ReadError, WriteError},
+    BsonCommand, ReadBsonCommand,
 };
 
 #[derive(Debug)]
@@ -37,28 +37,35 @@ impl From<ReadError> for RequestError {
     }
 }
 
-/// Async Command session with command cache.
+/// Async Command session.
 /// Provide methods for requesting command response and broadcast command handling.
 /// Useful when creating client.
 #[derive(Debug)]
 pub struct BsonCommandSession<S> {
+    current_id: i32,
     read_map: IndexMap<i32, BsonCommand<Document>>,
 
-    manager: BsonCommandManager<S>,
+    codec: BsonCommandCodec<S>,
 }
 
 impl<S> BsonCommandSession<S> {
     /// Create new [BsonCommandSession]
-    pub fn new(manager: BsonCommandManager<S>) -> Self {
+    pub fn new(stream: S) -> Self {
         Self {
+            current_id: 0,
             read_map: IndexMap::new(),
-            manager,
+
+            codec: BsonCommandCodec::new(stream),
         }
     }
 
-    /// Consume self and returns inner [BsonCommandManager]
-    pub fn into_inner(self) -> BsonCommandManager<S> {
-        self.manager
+    pub fn current_id(&self) -> i32 {
+        self.current_id
+    }
+
+    /// Consume self and returns inner stream
+    pub fn into_inner(self) -> S {
+        self.codec.into_inner()
     }
 }
 
@@ -66,12 +73,15 @@ impl<S: Write> BsonCommandSession<S> {
     /// Send and create response ticket of this request.
     /// The response is guaranteed to have same id of request command.
     pub fn request(&mut self, command: &BsonCommand<impl Serialize>) -> Result<i32, WriteError> {
-        let id = self.manager.write(command)?;
-        self.manager
+        let request_id = self.current_id;
+        self.current_id += 1;
+
+        self.codec.write(request_id, command)?;
+        self.codec
             .flush()
             .map_err(|err| WriteError::Codec(StreamError::Io(err)))?;
 
-        Ok(id)
+        Ok(request_id)
     }
 }
 
@@ -82,23 +92,29 @@ impl<S: AsyncWrite + Unpin> BsonCommandSession<S> {
         &mut self,
         command: &BsonCommand<impl Serialize>,
     ) -> Result<i32, WriteError> {
-        let id = self.manager.write_async(command).await?;
-        self.manager
+        let request_id = self.current_id;
+        self.current_id += 1;
+
+        self.codec.write_async(request_id, command).await?;
+        self.codec
             .flush_async()
             .await
             .map_err(|err| WriteError::Codec(StreamError::Io(err)))?;
 
-        Ok(id)
+        Ok(request_id)
     }
 }
 
 impl<S: Read> BsonCommandSession<S> {
     /// Read next [BsonCommand]
-    pub fn read(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
+    pub fn read(&mut self) -> Result<ReadBsonCommand<Document>, ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
-            Ok((next_id, self.read_map.shift_remove(&next_id).unwrap()))
+            Ok(ReadBsonCommand {
+                read_id: next_id,
+                command: self.read_map.shift_remove(&next_id).unwrap()
+            })
         } else {
-            let read = self.manager.read()?;
+            let read = self.codec.read()?;
             Ok(read)
         }
     }
@@ -110,12 +126,12 @@ impl<S: Read> BsonCommandSession<S> {
         }
 
         loop {
-            let (read_id, read) = self.manager.read()?;
+            let ReadBsonCommand { read_id: request_id, command } = self.codec.read()?;
 
-            if read_id == id {
-                return Ok(read);
+            if request_id == id {
+                return Ok(command);
             } else {
-                self.read_map.insert(id, read);
+                self.read_map.insert(request_id, command);
             }
         }
     }
@@ -123,11 +139,14 @@ impl<S: Read> BsonCommandSession<S> {
 
 impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
     /// Read next [BsonCommand] asynchronously
-    pub async fn read_async(&mut self) -> Result<(i32, BsonCommand<Document>), ReadError> {
+    pub async fn read_async(&mut self) -> Result<ReadBsonCommand<Document>, ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
-            Ok((next_id, self.read_map.shift_remove(&next_id).unwrap()))
+            Ok(ReadBsonCommand {
+                read_id: next_id,
+                command: self.read_map.shift_remove(&next_id).unwrap()
+            })
         } else {
-            let read = self.manager.read_async().await?;
+            let read = self.codec.read_async().await?;
             Ok(read)
         }
     }
@@ -139,12 +158,12 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
         }
 
         loop {
-            let (read_id, read) = self.manager.read_async().await?;
+            let ReadBsonCommand { read_id: request_id, command } = self.codec.read_async().await?;
 
-            if read_id == id {
-                return Ok(read);
+            if request_id == id {
+                return Ok(command);
             } else {
-                self.read_map.insert(id, read);
+                self.read_map.insert(request_id, command);
             }
         }
     }
