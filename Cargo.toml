@@ -17,10 +17,11 @@ serde = { version = "1.0", features = ["derive"] }
 futures = "0.3.16"
 bson = "2.0.1"
 indexmap = "1.7.0"
-loco-protocol = { version = "4.1.0", path = "../loco-protocol-rs" }
+loco-protocol = "4.1.0"
+# loco-protocol = { path = "../loco-protocol-rs" }
 
 [dev-dependencies]
-talk-api-client = { version = "0.1.0", path = "../talk-auth-client" }
+talk-api-client = { version = "0.1.0", git = "https://github.com/storycraft/talk-api-client-rs.git" }
 tokio-native-tls = "0.3.0"
 rsa = { version = "0.5.0", features = ["pem"] }
 tokio = { version = "1.9.0", features = ["full"] }
