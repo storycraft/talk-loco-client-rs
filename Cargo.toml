@@ -17,7 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 futures = "0.3.16"
 bson = "2.0.1"
 indexmap = "1.7.0"
-loco-protocol = "4.1.0"
+loco-protocol = "5.0.0"
 # loco-protocol = { path = "../loco-protocol-rs" }
 
 [dev-dependencies]
