@@ -28,9 +28,9 @@ use talk_loco_client::{
         chat::{LChatListReq, LoginListReq},
     },
     response,
-    stream::ChunkedWriteStream,
     structs::client::ClientInfo,
 };
+use tokio::io::BufStream;
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncReadCompatExt;
 
@@ -87,13 +87,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let checkin_data = {
         let mut checkin_stream = SecureStream::new(
             CryptoStore::new(),
-            ChunkedWriteStream::new(
+            BufStream::new(
                 TcpStream::connect("ticket-loco.kakao.com:443")
                     .await
-                    .unwrap()
-                    .compat(),
-                2048,
-            ),
+                    .unwrap(),
+            )
+            .compat(),
         );
 
         loco_session.handshake_async(&mut checkin_stream).await?;
@@ -113,13 +112,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Login start
     let mut talk_stream = SecureStream::new(
         CryptoStore::new(),
-        ChunkedWriteStream::new(
+        BufStream::new(
             TcpStream::connect(&format!("{}:{}", checkin_data.host, checkin_data.port))
                 .await
-                .unwrap()
-                .compat(),
-            2048,
-        ),
+                .unwrap(),
+        )
+        .compat(),
     );
 
     loco_session.handshake_async(&mut talk_stream).await?;

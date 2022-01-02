@@ -12,8 +12,9 @@ use loco_protocol::secure::{
 use rsa::{pkcs8::FromPublicKey, RsaPublicKey};
 use talk_loco_client::{
     client::checkin::CheckinClient, command::session::BsonCommandSession, request,
-    stream::ChunkedWriteStream, structs::client::ClientInfo,
+    structs::client::ClientInfo,
 };
+use tokio::io::BufStream;
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncReadCompatExt;
 
@@ -29,13 +30,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut stream = SecureStream::new(
         CryptoStore::new(),
-        ChunkedWriteStream::new(
+        BufStream::new(
             TcpStream::connect("ticket-loco.kakao.com:443")
                 .await
-                .unwrap()
-                .compat(),
-            2048,
-        ),
+                .unwrap(),
+        )
+        .compat(),
     );
 
     loco_session.handshake_async(&mut stream).await?;

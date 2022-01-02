@@ -15,6 +15,5 @@ pub mod response;
 pub mod structs;
 
 pub mod command;
-pub mod stream;
 
 pub mod client;

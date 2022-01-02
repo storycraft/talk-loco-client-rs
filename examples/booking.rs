@@ -7,12 +7,9 @@
 use std::error::Error;
 
 use talk_loco_client::{
-    client::booking::BookingClient,
-    command::{session::BsonCommandSession},
-    request,
-    stream::ChunkedWriteStream,
+    client::booking::BookingClient, command::session::BsonCommandSession, request,
 };
-use tokio::net::TcpStream;
+use tokio::{net::TcpStream, io::BufStream};
 use tokio_native_tls::native_tls;
 use tokio_util::compat::TokioAsyncReadCompatExt;
 
@@ -20,19 +17,18 @@ use tokio_util::compat::TokioAsyncReadCompatExt;
 async fn main() -> Result<(), Box<dyn Error>> {
     let connector = tokio_native_tls::TlsConnector::from(native_tls::TlsConnector::new().unwrap());
 
-    let stream = ChunkedWriteStream::new(
-        connector
-            .connect(
-                "booking-loco.kakao.com",
+    let stream = connector
+        .connect(
+            "booking-loco.kakao.com",
+            BufStream::new(
                 TcpStream::connect("booking-loco.kakao.com:443")
                     .await
                     .unwrap(),
-            )
-            .await
-            .unwrap()
-            .compat(),
-        2048,
-    );
+            ),
+        )
+        .await
+        .unwrap()
+        .compat();
 
     let mut booking_conn = BsonCommandSession::new(stream);
     let mut booking_client = BookingClient(&mut booking_conn);
