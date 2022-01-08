@@ -153,7 +153,7 @@ impl<S: Read> BsonCommandCodec<S> {
             let data = bson::Document::from_reader(&mut Cursor::new(command.data))?;
 
             Ok(ReadBsonCommand {
-                read_id: id,
+                id,
                 command: BsonCommand::new(method, command.header.data_type, data),
             })
         } else {
@@ -193,7 +193,7 @@ impl<S: AsyncRead + Unpin> BsonCommandCodec<S> {
             let data = bson::Document::from_reader(&mut Cursor::new(command.data))?;
 
             Ok(ReadBsonCommand {
-                read_id: id,
+                id,
                 command: BsonCommand::new(method, command.header.data_type, data),
             })
         } else {

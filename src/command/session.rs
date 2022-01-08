@@ -110,7 +110,7 @@ impl<S: Read> BsonCommandSession<S> {
     pub fn read(&mut self) -> Result<ReadBsonCommand<Document>, ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
             Ok(ReadBsonCommand {
-                read_id: next_id,
+                id: next_id,
                 command: self.read_map.shift_remove(&next_id).unwrap()
             })
         } else {
@@ -126,7 +126,7 @@ impl<S: Read> BsonCommandSession<S> {
         }
 
         loop {
-            let ReadBsonCommand { read_id: request_id, command } = self.codec.read()?;
+            let ReadBsonCommand { id: request_id, command } = self.codec.read()?;
 
             if request_id == id {
                 return Ok(command);
@@ -142,7 +142,7 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
     pub async fn read_async(&mut self) -> Result<ReadBsonCommand<Document>, ReadError> {
         if let Some(next_id) = self.read_map.keys().next().copied() {
             Ok(ReadBsonCommand {
-                read_id: next_id,
+                id: next_id,
                 command: self.read_map.shift_remove(&next_id).unwrap()
             })
         } else {
@@ -158,7 +158,7 @@ impl<S: AsyncRead + Unpin> BsonCommandSession<S> {
         }
 
         loop {
-            let ReadBsonCommand { read_id: request_id, command } = self.codec.read_async().await?;
+            let ReadBsonCommand { id: request_id, command } = self.codec.read_async().await?;
 
             if request_id == id {
                 return Ok(command);

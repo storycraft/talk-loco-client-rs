@@ -161,9 +161,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         // Read incoming broadcast commands
-        let ReadBsonCommand { read_id, command } = talk_conn.read_async().await?;
+        let ReadBsonCommand { id, command } = talk_conn.read_async().await?;
 
-        println!("READ {}: {:?}", read_id, command);
+        println!("READ {}: {:?}", id, command);
 
         thread::sleep(Duration::from_millis(1));
     }

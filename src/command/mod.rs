@@ -52,6 +52,6 @@ impl BsonCommand<Document> {
 
 #[derive(Debug, Clone)]
 pub struct ReadBsonCommand<T> {
-    pub read_id: i32,
+    pub id: i32,
     pub command: BsonCommand<T>
 }
