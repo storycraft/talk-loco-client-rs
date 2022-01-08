@@ -28,8 +28,8 @@ pub struct LoginListRes {
     pub eof: bool,
 
     /// Latest chatroom id
-    #[serde(rename = "lastChatId")]
-    pub last_chat_id: i64,
+    #[serde(rename = "lastChatId", skip_serializing_if = "Option::is_none")]
+    pub last_chat_id: Option<i64>,
 
     /// Latest token(Unknown) id
     #[serde(rename = "lastTokenId")]
